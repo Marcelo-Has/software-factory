@@ -6,15 +6,15 @@ on:
   pull_request:
 
 jobs:
-  no-portuguese:
-    name: no-portuguese
+  english-only:
+    name: english-only
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: node .github/scripts/no-portuguese.mjs
+      - run: node .github/scripts/english-only.mjs
 
   boundary-check:
     name: boundary-check

@@ -23,7 +23,7 @@ Decisions fixed for this port:
   stay immutable per project.
 - **Language.** Everything under `CLAUDE.md`, `DECISIONS.md`, `.claude/`,
   `.github/`, `factory/` is 100% English — no Portuguese anywhere, enforced by a CI
-  gate (`no-portuguese.mjs`).
+  gate (`english-only.mjs`).
 - **Boundary.** The origin repo's product identity (paths, hosting identifiers,
   product name) must never leak into the core, enforced by a CI gate
   (`boundary-check.mjs`).

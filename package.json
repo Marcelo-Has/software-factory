@@ -5,7 +5,7 @@
   "description": "Autonomous software factory — generic core (template repo)",
   "scripts": {
     "test": "vitest run",
-    "gate:no-portuguese": "node .github/scripts/no-portuguese.mjs",
+    "gate:english-only": "node .github/scripts/english-only.mjs",
     "gate:boundary": "node .github/scripts/boundary-check.mjs"
   },
   "devDependencies": {

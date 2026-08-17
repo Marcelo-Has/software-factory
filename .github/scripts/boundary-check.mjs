@@ -21,7 +21,7 @@ const TEXT_EXTENSIONS = new Set(['.md', '.mjs', '.js', '.ts', '.json', '.yml', '
 const EXCLUDE_DIRS = new Set(['node_modules', '.git'])
 
 const EXCLUDE_FILES = new Set([
-  '.github/scripts/no-portuguese.mjs',
+  '.github/scripts/english-only.mjs',
   '.github/scripts/boundary-check.mjs',
 ])
 
