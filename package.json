@@ -1,0 +1,14 @@
+{
+  "name": "software-factory",
+  "private": true,
+  "type": "module",
+  "description": "Autonomous software factory — generic core (template repo)",
+  "scripts": {
+    "test": "vitest run",
+    "gate:no-portuguese": "node .github/scripts/no-portuguese.mjs",
+    "gate:boundary": "node .github/scripts/boundary-check.mjs"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.7"
+  }
+}
