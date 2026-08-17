@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(npm run test*)",
+      "Bash(npm run lint*)",
+      "Bash(npm run build*)",
+      "Bash(npm ci*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git add*)",
+      "Bash(git commit*)"
+    ],
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(git push --force*)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/secrets*)",
+      "Read(**/serviceAccount*.json)",
+      "Read(./.git/**)",
+      "Read(/proc/**)",
+      "Edit(factory/**)",
+      "Write(factory/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "grep -qiE 'sk-ant-|sk_live_|sk_test_|rk_live_|whsec_|ghp_|gho_|ghs_|github_pat_|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|STRIPE_SECRET|AKIA[0-9A-Z]{16}|AUTHORIZATION: basic' && { echo 'Blocked: possible secret in command' >&2; exit 2; }; exit 0"
+          },
+          {
+            "type": "command",
+            "command": "grep -qE '\\bgh\\b[^|;&]*(--body-file|--input|[[:space:]]-F)' && { echo 'Blocked: --body-file/-F/--input in a gh command publishes file content without going through the command secret filter; publish with --body and reviewed text instead' >&2; exit 2; }; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

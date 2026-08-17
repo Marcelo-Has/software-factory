@@ -1,0 +1,8 @@
+{
+  "_comment": "Copy this file to 'settings.local.json' (gitignored) and put your personal preferences for this project here. Same syntax as settings.json. Lists (e.g. permissions.allow) are additive with settings.json.",
+  "permissions": {
+    "allow": [
+      "Bash(docker *)"
+    ]
+  }
+}

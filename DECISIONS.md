@@ -39,3 +39,32 @@ Decisions fixed for this port:
 **Why:** the factory needs to be reusable across products. Keeping it entangled
 with one product's history, paths, and language would make every future product
 pay the cost of the first one.
+
+---
+
+## D-002 — DP-5: single source of truth per role
+
+**Date:** 2026-08-17
+**Status:** accepted
+
+Every role in the choreography has exactly one **executable** source. Never two.
+
+- **Roles executed as native Claude Code subagents** — `developer-lead`,
+  `developer-frontend`, `developer-backend`, `design-director` — keep their full
+  contract in `.claude/agents/<role>.md`. That file **is** the source of execution
+  (it's the native subagent mechanism).
+- **Roles executed by a workflow with an inline prompt** — `reviewer`, `verdict`,
+  `refiner`, `supervisor`, `design-critic` — have their executable prompt live inline
+  in the matching `.github/workflows/<file>.yml`. The corresponding
+  `.claude/agents/<role>.md` becomes a **derived role card**: a short role summary
+  with no duplicated executable steps, headed
+  > Role documentation only — the executable prompt lives in
+  > `.github/workflows/<file>.yml`. Never edit behavior here.
+
+**Why:** the origin project carried this exact role split with both files updated by
+hand in parallel — the `.md` contract and the workflow's inline prompt — and let them
+drift out of sync, most visibly on `design-critic`, which shipped a synchronization
+note ("keep both in sync until a later decision") instead of a resolution. Two
+editable sources for one behavior is a bug waiting for the next edit that only
+touches one of them. This factory resolves it at the port: pick one file as the
+single source per role, and make the other one inert documentation by construction.
