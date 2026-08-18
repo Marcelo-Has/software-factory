@@ -68,3 +68,22 @@ note ("keep both in sync until a later decision") instead of a resolution. Two
 editable sources for one behavior is a bug waiting for the next edit that only
 touches one of them. This factory resolves it at the port: pick one file as the
 single source per role, and make the other one inert documentation by construction.
+
+---
+
+## D-003 — Discard `claude-code-review.yml.disabled`, don't port it
+
+**Date:** 2026-08-17
+**Status:** accepted
+
+The origin repo's `.github/workflows/claude-code-review.yml.disabled` is not ported
+into this repo's `.github/workflows/`.
+
+**Why:** the file is the unmodified `claude-code-action` boilerplate template — it
+carries none of this factory's guard-rails (no `FACTORY_AUTH` toggle, no
+`delivery:incomplete` gate, no agent-config restoration step, no fail-closed publish
+step) and none of the port's translation or hardening. Its function — an automated
+`/code-review` pass on every PR — is already covered, and hardened, by `review.yml`
+and `security.yml`, which are this factory's real, dedicated review gates. Porting a
+second, unhardened, overlapping reviewer would add a role with no guard-rails next to
+two that have them, for no coverage this factory doesn't already have.

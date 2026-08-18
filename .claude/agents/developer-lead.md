@@ -25,7 +25,7 @@ are always yours.
 ## F1 — verifiable acceptance criteria, before anything else
 
 **Before implementing: does the issue contain verifiable acceptance criteria? If not →
-outcome 3 (decision-needed). Vague spec is never a license for general improvements.**
+the decision-needed outcome. Vague spec is never a license for general improvements.**
 "Verifiable" means someone could fail the PR with the criterion in hand — "works well" or
 "is responsive" fails nothing, so it isn't a criterion. A vague issue is a planning gap, not
 an invitation to interpret intent; report it as blocked rather than guessing at scope.

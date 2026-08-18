@@ -1,4 +1,5 @@
 name: CI
+# The deterministic judge: no AI, no judgment call — either the gate passes or the job fails.
 
 on:
   push:
@@ -10,30 +11,67 @@ jobs:
     name: english-only
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20
+          node-version: 22
       - run: node .github/scripts/english-only.mjs
 
   boundary-check:
     name: boundary-check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20
+          node-version: 22
       - run: node .github/scripts/boundary-check.mjs
 
   factory-tests:
     name: factory-tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm test
+
+  # Deterministic, cheap, and the single place product jobs (lint/test/build of app/) will
+  # attach to once a profile exists. `app/` today only carries its own README.md and the
+  # per-subfolder `.gitkeep` placeholders (see project/README.md and app/README.md for the
+  # contract) — this repo has no product code yet, and no product job runs against it. A
+  # count over anything else under `app/` is what makes that condition deterministic rather
+  # than guessed: this job always runs and always tells the truth about whether there's
+  # product code to gate on, so CI stays green on the empty skeleton without pretending a
+  # product pipeline exists.
+  detect-app-code:
+    name: detect-app-code
+    runs-on: ubuntu-latest
+    outputs:
+      has-code: ${{ steps.detect.outputs.has-code }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - id: detect
+        run: |
+          count=$(find app -type f -not -name 'README.md' -not -name '.gitkeep' | wc -l)
+          if [ "$count" -gt 0 ]; then
+            echo "has-code=true" >> "$GITHUB_OUTPUT"
+            echo "app/ has ${count} file(s) beyond README.md/.gitkeep — product jobs would run."
+          else
+            echo "has-code=false" >> "$GITHUB_OUTPUT"
+            echo "app/ is still the empty skeleton — no product job to run yet."
+          fi
+
+  # Placeholder product job, wired to the condition above. A profile lands with its own
+  # lint/test/build job(s) gated the same way — `if: needs.detect-app-code.outputs.has-code
+  # == 'true'` — rather than inventing the condition again at that point.
+  product-ci:
+    name: product-ci
+    needs: detect-app-code
+    if: needs.detect-app-code.outputs.has-code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "app/ has code — a profile's real lint/test/build steps replace this placeholder."

@@ -1,0 +1,264 @@
+name: Review
+# The Reviewer: independent review of every PR (correctness + maintainability + style).
+#
+# DP-5: the prompt below is the executable contract for this role — see
+# `.claude/agents/reviewer.md`, which is a derived role card only (DECISIONS.md D-002).
+on:
+  pull_request:
+    # `labeled`/`unlabeled` are here because review is gated by the completeness label
+    # (D-019): swapping `delivery:incomplete` for `delivery:complete` does NOT emit
+    # `synchronize`, so without these two events a PR that finishes on a label swap — no push
+    # after — would never be reviewed.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+# The developer-lead pushes a commit at every step (D-019). Without this, every push would pay
+# for a full AI review round of a state it's about to rewrite on the next push.
+concurrency:
+  group: review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read          # read the PR's comments for the workflow-self-modification guard-rail
+  id-token: write
+  actions: write
+
+jobs:
+  review:
+    # Don't review a PR marked `delivery:incomplete` (D-019): reviewing code the developer-lead
+    # is still going to rewrite pays for an AI round over a state that won't exist. A reviewable
+    # state is `delivery:complete` — and the label swap fires `labeled`, bringing review back
+    # over the final state.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'delivery:incomplete') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      # Reviewer integrity (D-033). The checkout above is the branch UNDER REVIEW, and
+      # `claude-code-action` loads `CLAUDE.md`/`.claude/` from the workspace — including any
+      # `command`-type `hooks.PreToolUse` in `.claude/settings.json`, which is arbitrary command
+      # execution on this runner, which holds `ANTHROPIC_API_KEY`/`GITHUB_TOKEN`. Without this
+      # step, a PR could rewrite the instructions (or the hook) of the very Reviewer that's
+      # about to judge it. This job only reads (no `git push`), so it doesn't need the index
+      # caveat `fix.yml` has to handle.
+      - name: Use the base branch's agent config, not the reviewed branch's
+        env:
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin "${BASE}"
+
+          # Erase ALL agent config from the branch under review — root AND subdirectories.
+          find . -path ./.git -prune -o -path ./node_modules -prune -o \
+                 \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name AGENTS.md \
+                    -o -name .mcp.json -o -name .claude \) \
+                 -print0 | xargs -0r rm -rf
+
+          # Restore from the base branch whatever it versions at those paths.
+          git ls-tree -r --name-only FETCH_HEAD \
+            | grep -E '(^|/)(CLAUDE\.md|AGENTS\.md|\.mcp\.json)$|(^|/)\.claude/' \
+            | xargs -r git checkout FETCH_HEAD --
+
+          # Discard the credential `actions/checkout` persisted in `.git/config` (D-032):
+          # `persist-credentials` defaults to `true`.
+          git config --unset-all http.https://github.com/.extraheader || true
+
+          echo "Agent config restored from ${BASE}; checkout credential discarded."
+
+          # The step ABOVE just diverged the disk from the reviewed commit, on purpose.
+          # Recording the state here gives the baseline for what divergence is EXPECTED;
+          # anything BEYOND that by the end of the job is mutation from an unknown origin.
+          git status --porcelain > "${RUNNER_TEMP}/ws-expected.txt"
+          echo "::group::Workspace after restoration (expected divergence)"
+          cat "${RUNNER_TEMP}/ws-expected.txt"
+          echo "::endgroup::"
+
+      - uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        id: claude
+        continue-on-error: true
+        with:
+          # Auth-mode toggle via the repo variable FACTORY_AUTH: unset (or "api") uses the
+          # metered ANTHROPIC_API_KEY secret; "oauth" uses the CLAUDE_CODE_OAUTH_TOKEN
+          # subscription credential. The unused credential resolves to an empty string, which
+          # the action treats as absent.
+          anthropic_api_key: ${{ vars.FACTORY_AUTH != 'oauth' && secrets.ANTHROPIC_API_KEY || '' }}
+          claude_code_oauth_token: ${{ vars.FACTORY_AUTH == 'oauth' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          allowed_bots: "claude"
+          prompt: |
+            You are the Reviewer (see .claude/agents/reviewer.md).
+            Review this PR independently against the issue's requirements, the diff, and the
+            tests. Prioritize correctness, security/data leakage, consistency with the style
+            skills, and maintainability. Every observation comes with a concrete fix. Don't
+            edit code.
+
+            You have NO ability to publish to GitHub: instead of commenting on the PR, WRITE
+            the complete verdict — even if it's "No problems found" — to the file
+            ${{ runner.temp }}/review-verdict.md. A separate, non-AI step publishes that file
+            as a PR comment. `Write` is only for that file; don't change anything else in the
+            repository.
+
+            WHERE THE TRUTH COMES FROM — read this before opening any file (D-042). What you
+            judge is this PR's COMMIT, not this runner's disk. The two DIVERGE on purpose: an
+            earlier step in this job erased `CLAUDE.md`, `AGENTS.md`, `.mcp.json` and
+            `.claude/` from the branch and put the BASE branch's version in their place
+            (D-033), so a PR can't rewrite the instructions of the reviewer about to judge it.
+            Direct consequence: if this PR changes any of those paths, the DISK shows the BASE
+            version, and reading the disk makes you report that the PR "removed" exactly what
+            it ADDS. This is a known failure mode — an inverted verdict is exactly what it
+            produces.
+
+            Therefore:
+            - The source of what the PR does is `gh pr diff` and `git show <sha>:<path>`. Trust
+              the diff.
+            - `Read`/`Grep`/`Glob` read the DISK. Use them for context the diff doesn't show,
+              NEVER to conclude a line was added or removed.
+            - Before claiming this PR removes, reverts, or weakens anything, confirm in
+              `gh pr diff` that the line appears with a `-`. Didn't see the `-`? Don't claim it.
+
+            BUDGET AND TOOLS — read this before starting, trying what doesn't exist burns turns
+            for nothing. You have 80 turns and ONLY these tools:
+
+              Read, Glob, Grep, Write, TodoWrite
+              Bash: ls, git log, git show, gh pr view, gh pr diff
+
+            These do NOT exist here, and every attempt is a wasted turn: `cat`, `grep`, `head`,
+            `tail`, `wc`, `find`, `git diff` (use the `Read`/`Grep`/`Glob` tools and
+            `gh pr diff`), and `gh pr comment` (the verdict goes to the FILE above; the non-AI
+            step publishes it). Read the diff ONCE via `gh pr diff` and work from it; only open
+            a file on disk when you need to check something the diff doesn't show. If the
+            budget is running low, STOP investigating and write the verdict file with what you
+            have — a partial review published beats a red job with nothing.
+          # `Bash(gh pr comment:*)` is excluded: publishing text to the PR is no longer the
+          # agent's capability — the non-AI step below publishes it, from the file.
+          #
+          # `Bash(cat:*)`, `Bash(grep:*)`, `Bash(head:*)`, `Bash(tail:*)`, `Bash(wc:*)`,
+          # `Bash(find:*)` and `Bash(git diff:*)` are excluded: none of them is the `Read` tool,
+          # so none respects the `deny` list in `.claude/settings.json` — `grep -m1 . .git/config`
+          # and `git diff --no-index x .git/config` print exactly what `Read(./.git/**)` denies,
+          # and `find -exec` executes arbitrary commands. `Read`/`Grep`/`Glob` cover reading and
+          # respect the `deny` list; `gh pr diff`/`git show`/`git log` cover the diff.
+          claude_args: '--max-turns 80 --model claude-sonnet-5 --allowed-tools "Read,Glob,Grep,Write,TodoWrite,Bash(ls:*),Bash(git log:*),Bash(git show:*),Bash(gh pr view:*),Bash(gh pr diff:*)"'
+
+      # F2 — one automatic retry on a DISTINGUISHABLE infra failure, keeping fail-closed. The
+      # Reviewer step above runs with `continue-on-error: true` so this classification step can
+      # inspect why it failed before the job gives up. A legitimate review (the agent read the
+      # diff and wrote a verdict, favorable or not) is a successful action run regardless of
+      # content — only a genuine infra failure (a network blip, a TLS handshake failure, an
+      # upstream 5xx) makes the action step itself report failure. This step only decides
+      # whether a second attempt is worth it; the publish step below is what still fails closed
+      # if neither attempt produces a verdict file.
+      - name: Classify the failure as infra or real (F2)
+        id: infra
+        if: steps.claude.outcome == 'failure'
+        run: |
+          log="${RUNNER_TEMP}/claude-execution-output.json"
+          if [ -f "$log" ] && grep -qiE 'ETIMEDOUT|ECONNRESET|ENOTFOUND|TLS|SSL|timed out|502|503|504|Service Unavailable|Bad Gateway|Gateway Timeout|overloaded_error' "$log"; then
+            echo "infra=true" >> "$GITHUB_OUTPUT"
+            echo "Failure log matches a distinguishable infra pattern — retrying once."
+          else
+            echo "infra=false" >> "$GITHUB_OUTPUT"
+            echo "Failure does not match a known infra pattern — no retry, staying fail-closed."
+          fi
+
+      - name: Retry once after an infra failure (F2)
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        id: claude-retry
+        if: steps.claude.outcome == 'failure' && steps.infra.outputs.infra == 'true'
+        with:
+          anthropic_api_key: ${{ vars.FACTORY_AUTH != 'oauth' && secrets.ANTHROPIC_API_KEY || '' }}
+          claude_code_oauth_token: ${{ vars.FACTORY_AUTH == 'oauth' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          allowed_bots: "claude"
+          prompt: |
+            You are the Reviewer (see .claude/agents/reviewer.md). This is a retry after an
+            infra failure on the first attempt — same task as before: review this PR
+            independently against the issue's requirements, the diff, and the tests. Prioritize
+            correctness, security/data leakage, consistency with the style skills, and
+            maintainability. Every observation comes with a concrete fix. Don't edit code.
+
+            You have NO ability to publish to GitHub: WRITE the complete verdict — even if it's
+            "No problems found" — to ${{ runner.temp }}/review-verdict.md. A separate, non-AI
+            step publishes that file as a PR comment.
+
+            WHERE THE TRUTH COMES FROM. What you judge is this PR's COMMIT via `gh pr diff` /
+            `git show <sha>:<path>`, never the disk at `CLAUDE.md`/`AGENTS.md`/`.mcp.json`/
+            `.claude/` — those were deliberately restored from the base branch (D-033) and will
+            show the BASE version even where this PR changes them.
+
+            You have 80 turns and ONLY: Read, Glob, Grep, Write, TodoWrite, and Bash restricted
+            to ls/git log/git show/gh pr view/gh pr diff. If the budget is running low, STOP and
+            write the verdict file with what you have.
+          claude_args: '--max-turns 80 --model claude-sonnet-5 --allowed-tools "Read,Glob,Grep,Write,TodoWrite,Bash(ls:*),Bash(git log:*),Bash(git show:*),Bash(gh pr view:*),Bash(gh pr diff:*)"'
+
+      # Discards the credential `claude-code-action` writes to `.git/config` during its own
+      # bootstrap in the step above — a different key than the `extraheader` `actions/checkout`
+      # persists (which the `unset-all` above already covers). The action writes this during its
+      # own opaque step, so there's no way to clean it BEFORE the agent could read it — only
+      # after. This closes the window for the rest of the job (the guard-rail below); it doesn't
+      # close the read the agent itself could do while the action runs. See D-032.
+      - name: Discard the .git/config credential after the agent
+        if: always()
+        run: |
+          git config --unset-all http.https://github.com/.extraheader || true
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+
+      # D-042, applied. Diagnostic and guard-rail in the same step on purpose: a `git status`
+      # that only existed in the log depends on someone going to look — this makes any
+      # divergence BEYOND the expected one show up in the run log and turn into a warning on the
+      # verdict itself, instead of turning into an inverted verdict nobody can explain.
+      - name: Check for workspace divergence (D-042)
+        if: always()
+        run: |
+          set -euo pipefail
+          # `touch` because the restoration step may not have run (an earlier failure, `always()`).
+          touch "${RUNNER_TEMP}/ws-expected.txt"
+          git status --porcelain > "${RUNNER_TEMP}/ws-final.txt"
+          echo "::group::Workspace at the end of the job"
+          cat "${RUNNER_TEMP}/ws-final.txt"
+          echo "::endgroup::"
+          # `|| true`: `grep` exits 1 when nothing is left, which is the GOOD case and can't kill the job.
+          grep -Fxv -f "${RUNNER_TEMP}/ws-expected.txt" "${RUNNER_TEMP}/ws-final.txt" \
+            > "${RUNNER_TEMP}/ws-unexpected.txt" || true
+          if [ -s "${RUNNER_TEMP}/ws-unexpected.txt" ]; then
+            echo "::warning::The workspace diverged from the reviewed commit beyond the agent-config restoration. The verdict may describe the disk, not the diff — see the warning in the PR comment."
+          else
+            echo "Workspace has no unexpected divergence."
+          fi
+
+      # Publishes the verdict AND stands in as the non-AI publication guard-rail (D-034/D-037):
+      # either a verdict file exists and gets published, or the job fails. No inference by actor
+      # or by a comment-counting time window — those heuristics break the moment something
+      # upstream changes who posts, or another bot comments on every PR for an unrelated reason.
+      - name: Publish the verdict on the PR (non-AI step)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          F: ${{ runner.temp }}/review-verdict.md
+          DIVERGENCE: ${{ runner.temp }}/ws-unexpected.txt
+          OUT: ${{ runner.temp }}/review-comment.md
+        run: |
+          set -euo pipefail
+          if [ ! -s "$F" ]; then
+            echo "::error::The Reviewer did not write a verdict to $F. Review did not happen — treat as rejected, not green."
+            exit 1
+          fi
+          # If the workspace diverged beyond the expected, the reader of the verdict needs to
+          # know BEFORE acting on it — at the top of the comment itself, not only in the log.
+          if [ -s "$DIVERGENCE" ]; then
+            {
+              echo "> [!WARNING]"
+              echo "> **The runner's workspace diverged from the reviewed commit** (D-042)."
+              echo "> These paths changed outside the agent-config restoration ([D-033]):"
+              sed 's/^/> - `/; s/$/`/' "$DIVERGENCE"
+              echo ">"
+              echo "> The verdict below may describe the DISK, not the diff. Check it against"
+              echo "> \`gh pr diff ${PR}\` before acting on any finding."
+              echo
+              cat "$F"
+            } > "$OUT"
+          else
+            cp "$F" "$OUT"
+          fi
+          gh pr comment "${PR}" --body-file "$OUT"
+          echo "Verdict published on PR #${PR}."
