@@ -1,0 +1,5 @@
+/* Exception with NO justification: `reportDescriptionlessDisables` turns the silence itself into a finding. */
+.promise {
+	/* stylelint-disable-next-line declaration-property-value-disallowed-list */
+	color: #7c3aed;
+}

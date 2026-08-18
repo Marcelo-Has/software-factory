@@ -1,0 +1,5 @@
+/* Legitimate exception: silences a real finding AND says why THIS product wants it. */
+.third-party-badge {
+	/* stylelint-disable-next-line declaration-property-value-disallowed-list -- brand color required by the payment provider's badge; not this product's design decision */
+	color: #635bff;
+}
