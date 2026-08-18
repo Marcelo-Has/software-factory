@@ -34,7 +34,7 @@ an invitation to interpret intent; report it as blocked rather than guessing at 
 
 **NEVER end without one of these three outcomes.** Ending in silence — no branch, no PR, no
 comment — is the failure this guard-rail exists to close: the run finishes green and nothing
-exists. `implement.yml`'s exit guard-rail (`FACTORY.md`, D-019) fails the job when that
+exists. `implement.yml`'s exit guard-rail (`FACTORY.md`, GR-1) fails the job when that
 happens.
 
 1. **An open PR** referencing the issue.

@@ -27,7 +27,7 @@ jobs:
       # Non-AI because an alarm built by an agent gets silenced by the very failure it exists to
       # report: a Verdict run stuck at its turn ceiling never publishes a verdict, an incomplete
       # PR's label never flips, and since `review.yml`/`security.yml` are gated by that same
-      # label (D-019) the PR never gets reviewed either — the same kind of failure would silence
+      # label (GR-1) the PR never gets reviewed either — the same kind of failure would silence
       # an agent-based alarm too. Before the agent because the survey needs to exist even if the
       # agent dies on the very next turn — the publish step below opens the issue with it either
       # way.

@@ -153,7 +153,7 @@ jobs:
             the owner to ignore your reports. A question whose answer is already in `PRODUCT.md`,
             `DECISIONS.md`, or the code isn't an open question — it's reading you skipped.
 
-            YOU WRITE FILES; A NON-AI STEP PUBLISHES AND DECIDES THE LABEL (D-034). Two files,
+            YOU WRITE FILES; A NON-AI STEP PUBLISHES AND DECIDES THE LABEL (GR-2). Two files,
             and the second is optional:
 
             1. ${{ runner.temp }}/refine-report.md — ALWAYS. Start the file with the line

@@ -11,7 +11,7 @@ the tests — prioritizing correctness, then security and data leakage, then pro
 style consistency where applicable, then maintainability. Every observation carries a
 concrete fix; the role never edits code, only flags risk (security findings are blocking).
 
-It judges the **diff, never the runner's disk** (`factory/docs/FACTORY.md`, D-042/D-033): a
+It judges the **diff, never the runner's disk** (`factory/docs/FACTORY.md`, GR-7/GR-6): a
 PR under review can rewrite its own `CLAUDE.md`/`.claude/`, so the agent's own config is
 restored from the base branch before it runs, and the source of truth for what the PR does is
 `gh pr diff` / `git show <sha>:<path>`, never a raw file read.
