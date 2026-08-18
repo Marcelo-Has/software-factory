@@ -264,3 +264,65 @@ repo (where `project/` stays empty on `main`), and it arms itself automatically 
 product repo the moment `/init` writes the marker. There's no manual toggle to remember, no
 per-repo divergence to keep in sync, and no window where a factory-evolution session has to
 choose between working and being unprotected.
+
+---
+
+## D-009 — Definition Phase artifact conventions: status header, stable ids, schemas
+
+**Date:** 2026-08-18
+**Status:** accepted
+
+The Definition Phase (stages D0–D6, producing `PRODUCT.md`, `SPEC.md`, `ARCHITECTURE.md`,
+`DATA-MODEL.md`, `nfr.md`, `MILESTONES.md`, `DESIGN.md`, and their machine-readable
+companions) needs one fixed set of conventions so its templates, skills, and gates agree on
+shape without re-deciding it per session. Fixed here, for every session that builds on top of
+it:
+
+- **Uniform status header.** Every Definition-phase `.md` artifact carries the same header
+  table with a `| **Status** |` row (`candidate` \| `approved`), in the exact format
+  `gate-design-md.mjs` already parses for `DESIGN.md`. The Definition gates reuse that parser
+  as an exported function — never a second, parallel implementation.
+- **Stable ids, one scheme per artifact kind:**
+  - screens: `S-<slug>` (e.g. `S-billing`), declared in `project/docs/screens.yaml`;
+  - features: `#### F-<n> — <title>` headings in `SPEC.md` (grep-deterministic, no separate
+    index file);
+  - endpoints: the `operationId` of `project/docs/contracts/openapi.yaml`;
+  - integrations: `I-<slug>` in `project/docs/contracts/integrations.yaml`;
+  - Gherkin scenarios: tag `@scenario:<slug>`, plus `@endpoint:<operationId>` and/or
+    `@integration:<I-id>`, plus exactly one mandatory-class tag (`@happy` \| `@duplicate` \|
+    `@external-failure` \| `@invalid` \| `@unauthorized`, per [D-007](#d-007--the-dp-3-axis-logicalintegration-contracts-symmetric-to-the-visual-axis)).
+- **`screens.yaml` schema (D2).** Machine-readable screen inventory: per screen, `id`, `name`,
+  `area` (`marketing` \| `app` \| `admin` \| `email`), `route` (when applicable), `states`, and
+  `mockup_states` (the subset of `states` that requires a mockup — `default` always included).
+  An area with no screens must be declared explicitly (`areas_without_screens: [...]`) — a
+  declared hole is not the same failure as a forgotten one.
+- **Mockup filename contract (D5).** `project/design/mockups/<screen-id>.html` for the
+  `default` state, `<screen-id>--<state>.html` for every other `mockup_state`. Self-contained
+  static HTML (inline CSS, tokens copied from `tokens.css` as custom properties). The filename
+  **is** the contract the gate checks — existence, a minimum size, and no placeholder marker.
+- **`milestones.yaml` schema (D6).** The machine source of truth: per milestone, `id`, `name`,
+  `screens[]`, `features[]`, `endpoints[]`, `integrations[]`, `budget: {turns, usd}`,
+  `acceptance[]`. `MILESTONES.md` is the human narrative, carrying the same status header; the
+  gates parse only the YAML.
+- **`definition-status.yaml` schema (D0).** Per stage D0–D6: `status` (`pending` \|
+  `in-progress` \| `awaiting-approval` \| `approved` \| `waived`), `approved_by`/`date`,
+  `waivers[]` (item, justification, and the owner's sign-off), and `decided[]` vs `assumed[]`
+  (the refinement-flow tradition, carried into the Definition Phase). `init.json` holds
+  `{ name, language, owner, created }` — `/init`'s own config and the [D-008](#d-008--replace-the-static-core-write-deny-with-a-marker-gated-hook-gr-10)
+  marker.
+- **Product-decisions routing.** `/init` instantiates `project/docs/DECISIONS.md` — the
+  product's own decision log, its own numbering, in the language configured at `/init`. The
+  `answer-decision` skill routes by the GR-10 marker: product mode →
+  `project/docs/DECISIONS.md`; factory-source repo → the root `DECISIONS.md`.
+- **Language.** Everything the Definition Phase adds to the core — templates, examples,
+  skills, gates, playbooks, profile modules — is 100% English and product-neutral;
+  `english-only` and `boundary-check` apply to all of it. `project/**` uses whatever language
+  `/init` was given; that's out of the gates' scope by design (per [D-005](#d-005--redesign-the-language-gate-from-no-portuguese-to-english-only-retroactive-s11)).
+
+**Why:** without a fixed convention set, each Definition-phase template, its gate, and the
+skill that produces it would have to independently guess at ids and schemas, and would drift
+the moment two of them guessed differently — the same failure mode [D-002](#d-002--dp-5-single-source-of-truth-per-role)
+already named for role execution, here applied to document shape instead. Reusing
+`gate-design-md.mjs`'s status parser as a shared function, rather than writing a second parser
+for the six new artifact kinds, keeps that one piece of logic singular instead of six ways to
+drift out of sync with each other.
