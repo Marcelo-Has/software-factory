@@ -97,9 +97,11 @@ product is declared in `areas_without_screens`, never just omitted.
 **`project/docs/behaviors/*.feature`** carries the Gherkin scenarios for this spec's logical
 flows — one feature file per product feature area, tagged per D-009
 (`@scenario:<slug>` + `@endpoint:<operationId>` and/or `@integration:<I-id>` + one mandatory
-class tag). Written in D3, once `contracts/openapi.yaml` exists to reference — D2 declares
-which flows need scenarios; D3's `/define-architecture` is where the tags resolve against real
-`operationId`s.
+class tag). Written here, in D2, alongside `SPEC.md` and `screens.yaml` — `/define-spec` names
+the `operationId`/`I-<slug>` values the scenarios tag against before either contract exists.
+D3's `/define-architecture` doesn't originate those names: it makes them real, using the exact
+same ids in `contracts/openapi.yaml` and `contracts/integrations.yaml` — that's the "resolve"
+D3 does, never a fresh invention.
 
 **Screen inventory summary:** `[TO FILL IN — screen count by area, and confirmation every
 area without screens is declared]`

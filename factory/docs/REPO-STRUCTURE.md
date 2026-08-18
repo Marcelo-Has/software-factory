@@ -48,9 +48,11 @@ See [`.claude/README.md`](../../.claude/README.md) for the full contract.
     their real source; never edit behavior in them.
 - **`.claude/rules/`** — loaded by path: `right-sizing.md` (quality-vs-phase filter),
   `security.md`, `testing.md`, `design-antipatterns.md` (scoped to `app/web/**`).
-- **`.claude/skills/`** — one directory per skill, each holding a `SKILL.md`:
-  `answer-decision`, `design-foundation`, `fix-ci`, `harden-workflows`, `new-issue`,
-  `pause`, `resume`, `triage-pr`.
+- **`.claude/skills/`** — one directory per skill, each holding a `SKILL.md`. Definition
+  Phase (D0–D3, plan §0.6): `init`, `define-product`, `define-spec`, `define-architecture`.
+  Everything else: `answer-decision`, `design-foundation`, `fix-ci`, `harden-workflows`,
+  `new-issue`, `pause`, `resume`, `triage-pr`. D4–D6 and the `/fabric-init` orchestrator
+  (`design-mockups`, `plan-milestones`, `fabric-init`) land in a later session.
 - **`.claude/hooks/`** — `PreToolUse` hook scripts registered in `settings.json`:
   `guard-core-writes.mjs` (GR-10 — see `factory/docs/FACTORY.md`), the marker-gated
   guard that keeps `factory/`, `.claude/`, `.github/`, `CLAUDE.md`, and `DECISIONS.md`
@@ -101,4 +103,4 @@ See [`.github/README.md`](../../.github/README.md) for the full contract.
 ## Guard-rails
 
 See [`FACTORY.md`](FACTORY.md)'s guard-rail table for the full list of non-AI
-guard-rails (`GR-1`..`GR-9`) enforced by workflow steps, not agent judgment.
+guard-rails (`GR-1`..`GR-10`) enforced by workflow steps, not agent judgment.

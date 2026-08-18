@@ -5,12 +5,13 @@
 Copy this file to `project/design/BRAND-ASSETS.md` at the start of the Foundation phase (see
 `factory/docs/AUTONOMY.md` §2), before proposing anything in `DESIGN.md`. Then:
 
-1. Create the `design/assets/` directory described below, at the repo root, even if every
-   subpath in it stays empty.
+1. Create the `project/design/assets/` directory described below (created by `/init` at D0 —
+   `.claude/skills/init/SKILL.md` — if it doesn't already exist), even if every subpath in it
+   stays empty.
 2. Run the inventory scan in "Current state — inventory" below against the actual repository,
    and fill in the results table — verified, not assumed.
 3. Keep this file live: update the inventory whenever new brand material lands in
-   `design/assets/`, and note the date.
+   `project/design/assets/`, and note the date.
 
 ---
 
@@ -30,18 +31,17 @@ address turns "check for an asset" from good intentions into a mandatory step of
 ## The rule, in one sentence
 
 **An existing asset is the primary source. Creating from scratch is only for what's proven
-absent — and the Foundation proves the absence by reading `design/assets/` before creating
-anything.**
+absent — and the Foundation proves the absence by reading `project/design/assets/` before
+creating anything.**
 
 ## The directory
 
-`design/assets/` lives **at the repository root**, not inside `project/docs/` and not inside
-a served-assets directory. It's design raw material, not documentation and not an asset the
-app serves — what the app publishes still comes from the normal build pipeline.
+`project/design/assets/` lives under `project/`, not inside `project/docs/` and not inside a
+served-assets directory. It's design raw material, not documentation and not an asset the app
+serves — what the app publishes still comes from the normal build pipeline.
 
 ```
-design/assets/
-├── README.md        ← points to this convention
+project/design/assets/
 ├── logos/           ← the brand in vector form when it exists; variants (positive, negative, icon)
 ├── images/           ← product photos and images already live or already approved
 ├── palette.md        ← colors that already exist, with the hex and WHERE each is already used
@@ -58,7 +58,7 @@ from that reference.
 A mandatory step, **before** proposing anything in `DESIGN.md` (see `factory/docs/AUTONOMY.md`
 §2):
 
-1. **Read all of `design/assets/`.** All four items, even the empty ones.
+1. **Read all of `project/design/assets/`.** All four items, even the empty ones.
 2. **Derive first.** Color, typography, shape, and tone that can come from an existing asset
    come from it. The `DESIGN.md` §4.1 palette is born from `palette.md` and the logos when
    they exist.
@@ -103,6 +103,7 @@ will legitimately read `created-in-Foundation` — legitimate **because the abse
 and recorded above**, which is exactly the proof this convention requires.
 
 **Before the Foundation runs:** if the owner has brand material **outside** the repository (a
-logo draft, a palette, a reference, a wireframe, a board), it goes into `design/assets/`
-**before** the Foundation runs. Deposited afterward, it arrives too late: the visual direction
-will already have been proposed without it, and reconciling means a new Decision Gate.
+logo draft, a palette, a reference, a wireframe, a board), it goes into
+`project/design/assets/` **before** the Foundation runs. Deposited afterward, it arrives too
+late: the visual direction will already have been proposed without it, and reconciling means a
+new Decision Gate.
