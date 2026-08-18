@@ -75,7 +75,7 @@ fill it in **field by field**:
   "three rules of this document" section;
 - **§0**: `Status: candidate`, today's date, **`Gate` field empty**, interface category and
   stack profile filled in;
-- **no `[TO FILL]` left over**; a field that doesn't apply gets `Not applicable —` followed
+- **no `[TO FILL IN]` left over**; a field that doesn't apply gets `Not applicable —` followed
   by the reason;
 - **§4** with semantic tokens and **contrast verified here** (WCAG AA is the floor, not
   something the critic discovers);

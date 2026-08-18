@@ -22,6 +22,10 @@ How to use (human or Supervisor):
 - **Visual requirements is MANDATORY when the issue has the `area:frontend` label**:
   without VERIFIABLE visual criteria there, a frontend issue is NOT ready for
   `status:ready` — it goes back to spec, not into the queue.
+- **Behavior / integration requirements is MANDATORY when the issue has the
+  `area:backend` label**: without VERIFIABLE behavior/integration criteria there, a
+  backend issue is NOT ready for `status:ready` — it goes back to spec, not into the
+  queue.
 - Delete these comments before publishing.
 -->
 
@@ -73,6 +77,27 @@ How to use (human or Supervisor):
   and what the category's playbook (`factory/docs/playbooks/`) additionally requires. A
   value invented outside `DESIGN.md` is a finding. If the issue needs to deviate from
   `DESIGN.md`, that's a Decision Gate — not something to decide here. -->
+
+## Behavior / integration requirements
+<!-- MANDATORY if the issue has the `area:backend` label. Without VERIFIABLE
+     behavior/integration criteria here, a backend issue is not ready for `status:ready`.
+     VERIFIABLE = someone can REJECT the PR by looking at the result and this text.
+     "Handle errors properly" and "make it robust" are not requirements — there's no way to
+     fail a PR against them. Fill in all three items; an issue that doesn't touch a route,
+     handler, contract, or integration writes "n/a — doesn't touch behavior/integration"
+     and deletes the rest. -->
+
+- **Routes / handlers and states delivered:** <!-- which `operationId`(s) or webhook
+  handler(s) this issue delivers or changes, and what state each ends in (new, changed,
+  still a placeholder). -->
+- **Contracts and events touched:** <!-- which entries in `project/docs/contracts/
+  openapi.yaml` and/or `contracts/integrations.yaml` this issue reads or changes, and
+  which events/webhooks are involved. A contract change invented outside those files is a
+  finding — update the contract first. -->
+- **Mandatory scenario classes covered:** <!-- for every `operationId`/integration this
+  issue touches: which of the five DECISIONS.md D-007 classes (`@happy`, `@duplicate`,
+  `@external-failure`, `@invalid`, `@unauthorized`) apply here, and where each is covered
+  in `project/docs/behaviors/*.feature`. Only the happy path covered is a review finding. -->
 
 ## Technical requirements / decisions
 <!-- Decisions from DECISIONS.md that apply, relevant rules from `.claude/rules/`,

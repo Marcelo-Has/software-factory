@@ -1,0 +1,35 @@
+openapi: 3.1.0
+info:
+  title: Widgetco API
+  version: 0.1.0
+
+paths:
+  /widgets:
+    get:
+      operationId: listWidgets
+      summary: List every widget.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The widgets.
+
+  /webhooks/payments:
+    post:
+      operationId: handlePaymentWebhook
+      summary: The abstract payment provider's confirmation callback (I-payments).
+      security:
+        - webhookSignature: []
+      responses:
+        '200':
+          description: Acknowledgement.
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    webhookSignature:
+      type: apiKey
+      in: header
+      name: X-Payment-Provider-Signature

@@ -10,8 +10,8 @@ throughout this template:
 - `<!-- HOW TO FILL: ... -->` — the instruction. **Removed** from the filled copy.
 - `> _Example:_ ...` — shows the **kind** of answer expected, not the answer itself.
   **Removed** too.
-- `[TO FILL]` — a required field still empty. A `DESIGN.md` with any `[TO FILL]` left in it
-  **is not a candidate for approval**.
+- `[TO FILL IN]` — a required field still empty. A `DESIGN.md` with any `[TO FILL IN]` left
+  in it **is not a candidate for approval**.
 
 **Nothing is optional.** If a field doesn't apply to the project, write `Not applicable —`
 followed by the reason. A deleted field is a forgotten field; a field with a reason is a
@@ -59,12 +59,12 @@ decides the *taste*; it doesn't touch the *floor*.
 
 | Field | Value |
 | --- | --- |
-| **Status** | `[TO FILL]` — `candidate` \| `approved` |
-| **Date** | `[TO FILL]` — date of the current status (YYYY-MM-DD) |
-| **Gate** | `[TO FILL]` — identifier of the Decision Gate that approved it (empty while candidate) |
-| **Interface category** | `[TO FILL]` |
-| **Stack profile** | `[TO FILL]` |
-| **Active direction skill** | `[TO FILL]` |
+| **Status** | `[TO FILL IN]` — `candidate` \| `approved` |
+| **Date** | `[TO FILL IN]` — date of the current status (YYYY-MM-DD) |
+| **Gate** | `[TO FILL IN]` — identifier of the Decision Gate that approved it (empty while candidate) |
+| **Interface category** | `[TO FILL IN]` |
+| **Stack profile** | `[TO FILL IN]` |
+| **Active direction skill** | `[TO FILL IN]` |
 
 > _Example:_ `approved` · `2026-09-04` · `DE-003` · `guided flow + product site` ·
 > `SvelteKit + TypeScript, component-scoped CSS, no UI library` · the project's default
@@ -95,7 +95,7 @@ decides the *taste*; it doesn't touch the *floor*.
      "Modern," "clean," "minimalist," "elegant," and "premium" are BANNED here — they describe
      nothing and are exactly the unconscious default this layer exists to prevent. -->
 
-**Name:** `[TO FILL]`
+**Name:** `[TO FILL IN]`
 
 > _Example:_ **Family Archive** · **Corner Workshop** · **Field Notebook** · **Waiting Room**.
 
@@ -106,9 +106,9 @@ decides the *taste*; it doesn't touch the *floor*.
 
 **Why (3 sentences):**
 
-1. `[TO FILL]`
-2. `[TO FILL]`
-3. `[TO FILL]`
+1. `[TO FILL IN]`
+2. `[TO FILL IN]`
+3. `[TO FILL IN]`
 
 > _Example (one of them):_ "The buyer is saving a memory, not purchasing a service — the
 > interface needs to feel like a place where a memory is kept, not a checkout."
@@ -128,8 +128,8 @@ decides the *taste*; it doesn't touch the *floor*.
 
 | Reference | What exactly is taken from it |
 | --- | --- |
-| `[TO FILL]` | `[TO FILL]` |
-| `[TO FILL]` | `[TO FILL]` |
+| `[TO FILL IN]` | `[TO FILL IN]` |
+| `[TO FILL IN]` | `[TO FILL IN]` |
 
 > _Example:_ "how an independent publisher's site handles a spec sheet: dense data in small
 > body text, no box or card around it."
@@ -138,8 +138,8 @@ decides the *taste*; it doesn't touch the *floor*.
 
 | Anti-reference | What exactly is refused |
 | --- | --- |
-| `[TO FILL]` | `[TO FILL]` |
-| `[TO FILL]` | `[TO FILL]` |
+| `[TO FILL IN]` | `[TO FILL IN]` |
+| `[TO FILL IN]` | `[TO FILL IN]` |
 
 > _Example:_ "never like a SaaS panel: a centered hero with two buttons and three identical
 > cards right below it."
@@ -154,10 +154,10 @@ decides the *taste*; it doesn't touch the *floor*.
      if the signature disappeared, would the product look like any other in the category? If
      not, it's a signature. -->
 
-**The signature:** `[TO FILL]`
+**The signature:** `[TO FILL IN]`
 
-**Where it appears:** `[TO FILL]`
-**Where it does NOT appear:** `[TO FILL]`
+**Where it appears:** `[TO FILL IN]`
+**Where it does NOT appear:** `[TO FILL IN]`
 
 > _Example:_ "Every surface that holds something of the user's has a bottom border thicker
 > than the other three, like a folder tab. It appears on a saved-item card and the preview
@@ -184,25 +184,25 @@ decides the *taste*; it doesn't touch the *floor*.
 
 | Token | Role | Value | Verified contrast |
 | --- | --- | --- | --- |
-| `surface` | the product's base background | `[TO FILL]` | — |
-| `surface-raised` | a surface above the base (only where there's a real layer) | `[TO FILL]` | — |
-| `foreground` | primary text and icons | `[TO FILL]` | `[TO FILL]` over `surface` |
-| `muted` | secondary text and icons, demoted on purpose | `[TO FILL]` | `[TO FILL]` over `surface` |
-| `accent` | **the only** accent in the product | `[TO FILL]` | `[TO FILL]` |
-| `destructive` | destructive action and error | `[TO FILL]` | `[TO FILL]` |
-| `success` | confirmation, completion | `[TO FILL]` | `[TO FILL]` |
-| `warning` | attention without blocking | `[TO FILL]` | `[TO FILL]` |
-| `border` | boundary between surfaces | `[TO FILL]` | `[TO FILL]` |
-| `focus` | keyboard focus ring | `[TO FILL]` | `[TO FILL]` |
+| `surface` | the product's base background | `[TO FILL IN]` | — |
+| `surface-raised` | a surface above the base (only where there's a real layer) | `[TO FILL IN]` | — |
+| `foreground` | primary text and icons | `[TO FILL IN]` | `[TO FILL IN]` over `surface` |
+| `muted` | secondary text and icons, demoted on purpose | `[TO FILL IN]` | `[TO FILL IN]` over `surface` |
+| `accent` | **the only** accent in the product | `[TO FILL IN]` | `[TO FILL IN]` |
+| `destructive` | destructive action and error | `[TO FILL IN]` | `[TO FILL IN]` |
+| `success` | confirmation, completion | `[TO FILL IN]` | `[TO FILL IN]` |
+| `warning` | attention without blocking | `[TO FILL IN]` | `[TO FILL IN]` |
+| `border` | boundary between surfaces | `[TO FILL IN]` | `[TO FILL IN]` |
+| `focus` | keyboard focus ring | `[TO FILL IN]` | `[TO FILL IN]` |
 
 > _Example row:_ `accent` · the only accent · `#7A3E2B` (burnt terracotta) · 5.9:1 over
 > `surface`.
 
-**One accent only.** `[TO FILL]` — name the accent and say what it means when it appears.
+**One accent only.** `[TO FILL IN]` — name the accent and say what it means when it appears.
 A semantic state (`destructive`/`success`/`warning`) is a declared exception, not a second
 accent.
 
-**Neutral temperature:** `[TO FILL]` — which hue the neutrals pull toward. A fully desaturated
+**Neutral temperature:** `[TO FILL IN]` — which hue the neutrals pull toward. A fully desaturated
 gray and pure `#000` are the default of someone who didn't choose.
 
 ### 4.2 Spacing scale
@@ -211,23 +211,23 @@ gray and pure `#000` are the default of someone who didn't choose.
      padding, and margin in the product comes from here; a magic number inside a component is
      debt (craft §3). -->
 
-**Base:** `[TO FILL]`
+**Base:** `[TO FILL IN]`
 
 | Token | Value | Typical use |
 | --- | --- | --- |
-| `space-3xs` … `space-3xl` | `[TO FILL]` | `[TO FILL]` |
+| `space-3xs` … `space-3xl` | `[TO FILL IN]` | `[TO FILL IN]` |
 
 > _Example:_ base 4px · `space-xs 8px` (inside one group) · `space-lg 32px` (between groups) ·
 > `space-3xl 96px` (between page sections).
 
-**The project's rhythm rule:** `[TO FILL]` — which step separates items in the same group, and
+**The project's rhythm rule:** `[TO FILL IN]` — which step separates items in the same group, and
 which separates different groups. Monotonous spacing is a finding.
 
 ### 4.3 Radius
 
 | Token | Value | Where it applies |
 | --- | --- | --- |
-| `radius-sm` / `radius-md` / `radius-lg` / `radius-full` | `[TO FILL]` | `[TO FILL]` |
+| `radius-sm` / `radius-md` / `radius-lg` / `radius-full` | `[TO FILL IN]` | `[TO FILL IN]` |
 
 > _Example:_ `radius-sm 2px` on fields and buttons; `radius-lg 6px` on a content container;
 > `radius-full` only on avatars.
@@ -246,7 +246,7 @@ which separates different groups. Monotonous spacing is a finding.
 
 | Token | Value | When it's legitimate to use |
 | --- | --- | --- |
-| `elevation-0` … `elevation-2` | `[TO FILL]` | `[TO FILL]` |
+| `elevation-0` … `elevation-2` | `[TO FILL IN]` | `[TO FILL IN]` |
 
 > _Example:_ `elevation-1` = `0 1px 2px rgba(60,40,30,.12)`, only on a surface the user can
 > move or close (a menu, a dialog). A card in normal flow stays at `elevation-0`.
@@ -259,12 +259,12 @@ which separates different groups. Monotonous spacing is a finding.
 
 | Role | Where it's used | Family | Weight |
 | --- | --- | --- | --- |
-| `display` | `[TO FILL]` | `[TO FILL]` | `[TO FILL]` |
-| `heading` | `[TO FILL]` | `[TO FILL]` | `[TO FILL]` |
-| `body` | `[TO FILL]` | `[TO FILL]` | `[TO FILL]` |
-| `caption` | `[TO FILL]` | `[TO FILL]` | `[TO FILL]` |
+| `display` | `[TO FILL IN]` | `[TO FILL IN]` | `[TO FILL IN]` |
+| `heading` | `[TO FILL IN]` | `[TO FILL IN]` | `[TO FILL IN]` |
+| `body` | `[TO FILL IN]` | `[TO FILL IN]` | `[TO FILL IN]` |
+| `caption` | `[TO FILL IN]` | `[TO FILL IN]` | `[TO FILL IN]` |
 
-**Families:** `[TO FILL]` — one, two at most, and the second one **with a declared role**.
+**Families:** `[TO FILL IN]` — one, two at most, and the second one **with a declared role**.
 A default system-UI sans as the product's whole voice is a finding.
 
 ### 4.6 Motion
@@ -277,14 +277,14 @@ A default system-UI sans as the product's whole voice is a finding.
 
 | Token | Value | What it communicates |
 | --- | --- | --- |
-| `duration-instant` / `duration-base` / `duration-deliberate` | `[TO FILL]` | `[TO FILL]` |
-| `ease-out` / `ease-in-out` (name your own) | `[TO FILL]` | `[TO FILL]` |
+| `duration-instant` / `duration-base` / `duration-deliberate` | `[TO FILL IN]` | `[TO FILL IN]` |
+| `ease-out` / `ease-in-out` (name your own) | `[TO FILL IN]` | `[TO FILL IN]` |
 
 > _Example:_ `duration-base 180ms` + `ease-out cubic-bezier(.2,.8,.2,1)` — action feedback; the
 > control confirms it heard you.
 
-**The product's one authored moment:** `[TO FILL]` — the **one** motion worth having per
-screen (craft §8). **Behavior under `prefers-reduced-motion`:** `[TO FILL]`.
+**The product's one authored moment:** `[TO FILL IN]` — the **one** motion worth having per
+screen (craft §8). **Behavior under `prefers-reduced-motion`:** `[TO FILL IN]`.
 
 ---
 
@@ -295,11 +295,11 @@ screen (craft §8). **Behavior under `prefers-reduced-motion`:** `[TO FILL]`.
      between neighbors is a finding: ten near-identical steps equal no scale at all. Body text
      under 16px and UI text under 14px are also findings. -->
 
-**Ratio:** `[TO FILL]`
+**Ratio:** `[TO FILL IN]`
 
 | Step | Size | Line-height | Role that uses it |
 | --- | --- | --- | --- |
-| `[TO FILL]` | `[TO FILL]` | `[TO FILL]` | `[TO FILL]` |
+| `[TO FILL IN]` | `[TO FILL IN]` | `[TO FILL IN]` | `[TO FILL IN]` |
 
 > _Example row:_ `text-2xl` · 30px · 1.15 · section `heading`.
 
@@ -307,7 +307,7 @@ screen (craft §8). **Behavior under `prefers-reduced-motion`:** `[TO FILL]`.
      body text breathes more. And declare the body's LINE MEASURE: outside 45–75 characters is
      a finding. -->
 
-**Body line measure:** `[TO FILL]` characters.
+**Body line measure:** `[TO FILL IN]` characters.
 
 ### Weight pairs
 
@@ -318,8 +318,8 @@ screen (craft §8). **Behavior under `prefers-reduced-motion`:** `[TO FILL]`.
 
 | Pair | Weights | Where the contrast shows up |
 | --- | --- | --- |
-| Main pair | `[TO FILL]` | `[TO FILL]` |
-| Support pair | `[TO FILL]` | `[TO FILL]` |
+| Main pair | `[TO FILL IN]` | `[TO FILL IN]` |
+| Support pair | `[TO FILL IN]` | `[TO FILL IN]` |
 
 > _Example:_ 300 / 700 — the `display` at 300 against a data label at 700, on the same
 > baseline in the preview.
@@ -332,8 +332,8 @@ screen (craft §8). **Behavior under `prefers-reduced-motion`:** `[TO FILL]`.
      gutter, max content width, and stable named areas. Percentage arithmetic inside flex is
      always a grid that should have been declared as one. -->
 
-**Grid:** `[TO FILL]` — columns, gutter, max width, outer margin.
-**Layout concept in one sentence:** `[TO FILL]`
+**Grid:** `[TO FILL IN]` — columns, gutter, max width, outer margin.
+**Layout concept in one sentence:** `[TO FILL IN]`
 
 > _Example:_ 12 columns at 1280 / 6 at 768 / 4 at 375, 24px gutter, reading content locked at
 > 68ch. Concept: "one reading column at the center, with tools pinned to the margin."
@@ -345,8 +345,8 @@ screen (craft §8). **Behavior under `prefers-reduced-motion`:** `[TO FILL]`.
      first, second, third: craft §1) and the region skeleton. It's not a mockup: no color, no
      type, no shadow. Repeat the block for however many key screens the product has. -->
 
-**Screen:** `[TO FILL]`
-**Reading order, in one sentence:** `[TO FILL]`
+**Screen:** `[TO FILL IN]`
+**Reading order, in one sentence:** `[TO FILL IN]`
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -359,7 +359,7 @@ screen (craft §8). **Behavior under `prefers-reduced-motion`:** `[TO FILL]`.
 └──────────────────────────────────────────────┘
 ```
 
-**How this composition collapses on mobile:** `[TO FILL]`
+**How this composition collapses on mobile:** `[TO FILL IN]`
 
 <!-- Declaring the collapse HERE, next to the multi-column layout, is mandatory: a collapse not
      declared in the same place the composition was defined is a finding. -->
@@ -374,8 +374,8 @@ screen (craft §8). **Behavior under `prefers-reduced-motion`:** `[TO FILL]`.
      finding; an emoji instead of an icon too. If the product doesn't use icons, say so — it's
      a legitimate, strong decision. -->
 
-**Family:** `[TO FILL]` · **Weight:** `[TO FILL]` · **Allowed sizes:** `[TO FILL]`
-**When an icon is allowed:** `[TO FILL]` — and whether it can appear without a label.
+**Family:** `[TO FILL IN]` · **Weight:** `[TO FILL IN]` · **Allowed sizes:** `[TO FILL IN]`
+**When an icon is allowed:** `[TO FILL IN]` — and whether it can appear without a label.
 
 > _Example:_ a single family at 1.5px stroke, sizes 16/20/24; an icon never appears alone on a
 > primary-action control — it always comes with the label.
@@ -387,7 +387,7 @@ screen (craft §8). **Behavior under `prefers-reduced-motion`:** `[TO FILL]`.
      from the product's own frame. A hand-assembled SVG imitating an illustration or scene,
      and a fake screenshot made of divs, are both findings. -->
 
-**Source:** `[TO FILL]` · **Treatment:** `[TO FILL]` · **Forbidden:** `[TO FILL]`
+**Source:** `[TO FILL IN]` · **Treatment:** `[TO FILL IN]` · **Forbidden:** `[TO FILL IN]`
 
 ### 7.3 Density
 
@@ -397,8 +397,8 @@ screen (craft §8). **Behavior under `prefers-reduced-motion`:** `[TO FILL]`.
      section-to-section reads as inconsistency. And no density justifies a small touch target
      on mobile. -->
 
-**Chosen density:** `[TO FILL]` · **For which task:** `[TO FILL]`
-**Minimum mobile touch target:** `[TO FILL]`
+**Chosen density:** `[TO FILL IN]` · **For which task:** `[TO FILL IN]`
+**Minimum mobile touch target:** `[TO FILL IN]`
 
 ---
 
@@ -411,9 +411,9 @@ screen (craft §8). **Behavior under `prefers-reduced-motion`:** `[TO FILL]`.
      identity, and that's the defect. A component shipped in its library-default state is a
      finding, not a delivery (see factory/docs/SKILL-ROUTER.md). -->
 
-**Owned by the project:** `[TO FILL]`
-**Library primitive:** `[TO FILL]` — and which library, consistent with the §0 stack profile.
-**Mandatory customization rule:** `[TO FILL]` — what every imported primitive has to receive
+**Owned by the project:** `[TO FILL IN]`
+**Library primitive:** `[TO FILL IN]` — and which library, consistent with the §0 stack profile.
+**Mandatory customization rule:** `[TO FILL IN]` — what every imported primitive has to receive
 before it enters a screen.
 
 > _Example:_ we own everything the user associates with the product (the preview container, an
@@ -429,15 +429,15 @@ before it enters a screen.
      §9). This section is normative for anyone writing interface strings — including alt text,
      placeholders, labels, and error messages. -->
 
-**Voice in one sentence:** `[TO FILL]`
-**Person and address:** `[TO FILL]` — first or second person, singular or plural.
-**Register:** `[TO FILL]` — one per product.
+**Voice in one sentence:** `[TO FILL IN]`
+**Person and address:** `[TO FILL IN]` — first or second person, singular or plural.
+**Register:** `[TO FILL IN]` — one per product.
 
-**How a control is named:** `[TO FILL]`
+**How a control is named:** `[TO FILL IN]`
 > _Example:_ the label names the action it performs — "Generate preview," never "Continue" or
 > "OK."
 
-**How an error is written:** `[TO FILL]`
+**How an error is written:** `[TO FILL IN]`
 > _Example:_ names the problem and the way out, where the error happened — "The photo is
 > 12 MB; the limit is 8 MB. Pick another or resize it."
 
@@ -445,8 +445,8 @@ before it enters a screen.
 
 | Never | Why |
 | --- | --- |
-| `[TO FILL]` | `[TO FILL]` |
-| `[TO FILL]` | `[TO FILL]` |
+| `[TO FILL IN]` | `[TO FILL IN]` |
+| `[TO FILL IN]` | `[TO FILL IN]` |
 
 > _Example:_ nothing like "journey," "unique experience," or "revolutionize"; no exclamation
 > mark on a purchase confirmation — the product doesn't celebrate on the user's behalf.
@@ -464,11 +464,11 @@ before it enters a screen.
 
 | Width | What changes in intent | Why |
 | --- | --- | --- |
-| **375** | `[TO FILL]` | `[TO FILL]` |
-| **768** | `[TO FILL]` | `[TO FILL]` |
-| **1280** | `[TO FILL]` | `[TO FILL]` |
+| **375** | `[TO FILL IN]` | `[TO FILL IN]` |
+| **768** | `[TO FILL IN]` | `[TO FILL IN]` |
+| **1280** | `[TO FILL IN]` | `[TO FILL IN]` |
 
-**What does NOT change at any width:** `[TO FILL]` — does the §3 signature survive all three?
+**What does NOT change at any width:** `[TO FILL IN]` — does the §3 signature survive all three?
 
 ---
 
@@ -481,12 +481,12 @@ before it enters a screen.
 
 | Key component | Empty | Loading | Error | Overflow | Offline / degraded |
 | --- | --- | --- | --- | --- | --- |
-| `[TO FILL]` | `[TO FILL]` | `[TO FILL]` | `[TO FILL]` | `[TO FILL]` | `[TO FILL]` |
+| `[TO FILL IN]` | `[TO FILL IN]` | `[TO FILL IN]` | `[TO FILL IN]` | `[TO FILL IN]` | `[TO FILL IN]` |
 
 > _Example "loading" cell:_ a skeleton with the exact proportion of the final result, so the
 > layout doesn't jump — a generic spinner only where the final shape is unpredictable.
 
-**Interaction states:** `[TO FILL]` — hover, active, disabled, selected, and **visible focus**
+**Interaction states:** `[TO FILL IN]` — hover, active, disabled, selected, and **visible focus**
 are part of the component from its first commit. Removing `outline` without a replacement is a
 defect.
 
@@ -505,9 +505,9 @@ defect.
 
 | Requirement beyond the floor | Why |
 | --- | --- |
-| `[TO FILL]` | `[TO FILL]` |
+| `[TO FILL IN]` | `[TO FILL IN]` |
 
-**System preferences respected:** `[TO FILL]` — at minimum `prefers-reduced-motion`.
+**System preferences respected:** `[TO FILL IN]` — at minimum `prefers-reduced-motion`.
 **Zoom:** content and function preserved up to 200%.
 
 ---
@@ -519,7 +519,7 @@ defect.
      the product FOLLOWS and which it breaks on purpose, with the reason. If the product is web
      and only web, write "Not applicable — responsive web, no host platform." -->
 
-`[TO FILL]`
+`[TO FILL IN]`
 
 ---
 
@@ -540,12 +540,12 @@ defect.
 
 | Decision | Section | Origin | Source |
 | --- | --- | --- | --- |
-| `[TO FILL]` | `[TO FILL]` | `derived-from-asset` \| `created-in-Foundation` \| `inherited-from-existing-DS` | `[TO FILL]` |
+| `[TO FILL IN]` | `[TO FILL IN]` | `derived-from-asset` \| `created-in-Foundation` \| `inherited-from-existing-DS` | `[TO FILL IN]` |
 
 > _Example row:_ Base palette · §4.1 · `derived-from-asset` · `design/assets/palette.md` +
 > `design/assets/logos/primary-mark.svg`.
 
-**Assets read during this Foundation:** `[TO FILL]` — the list of what existed in
+**Assets read during this Foundation:** `[TO FILL IN]` — the list of what existed in
 `design/assets/` as of the §0 date. If the directory was empty, say so: that's what justifies
 the `created-in-Foundation` rows.
 

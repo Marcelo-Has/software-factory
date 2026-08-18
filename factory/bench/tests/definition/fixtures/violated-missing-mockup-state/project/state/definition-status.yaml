@@ -1,0 +1,55 @@
+# Synthetic fixture — a fully approved, fully covered Definition Phase, used to prove
+# gate-contracts.mjs and gate-definition-done.mjs both exit 0 on a genuinely complete
+# product. factory/bench/tests/definition/*.test.ts copies this tree, then mutates a copy
+# per violated-* case.
+
+stages:
+  D0:
+    status: approved
+    approved_by: Widgetco's owner
+    date: 2026-08-18
+    waivers: []
+    decided: []
+    assumed: []
+  D1:
+    status: approved
+    approved_by: Widgetco's owner
+    date: 2026-08-18
+    waivers: []
+    decided: []
+    assumed: []
+  D2:
+    status: approved
+    approved_by: Widgetco's owner
+    date: 2026-08-18
+    waivers: []
+    decided: []
+    assumed: []
+  D3:
+    status: approved
+    approved_by: Widgetco's owner
+    date: 2026-08-18
+    waivers: []
+    decided: []
+    assumed: []
+  D4:
+    status: approved
+    approved_by: Widgetco's owner
+    date: 2026-08-18
+    waivers: []
+    decided: []
+    assumed: []
+  D5:
+    status: approved
+    approved_by: Widgetco's owner
+    date: 2026-08-18
+    waivers: []
+    decided: []
+    assumed: []
+  D6:
+    status: approved
+    approved_by: Widgetco's owner
+    date: 2026-08-18
+    waivers: []
+    decided: []
+    assumed: []

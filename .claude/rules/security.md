@@ -23,3 +23,7 @@ Mandatory baseline:
 
 Weakening this baseline is a **Decision Gate** (see `factory/docs/AUTONOMY.md`). Applying it
 is free.
+
+`project/docs/nfr.md` is the per-product instance of this baseline — its idempotency
+requirements and error-handling rules are what a route or webhook handler is actually
+judged against, not just this file's generic floor.

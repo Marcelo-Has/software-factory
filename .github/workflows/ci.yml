@@ -39,6 +39,37 @@ jobs:
       - run: npm ci
       - run: npm test
 
+  # The Definition-phase gates: gate-design-md.mjs (DP-2, the visual axis — written in an
+  # earlier wave but never wired into a workflow until now) and gate-contracts.mjs (DP-3, the
+  # logical/integration axis, DECISIONS.md D-007). Always runs; each script decides for
+  # itself whether it applies, by the changed paths, and exits 0 on the empty project/app
+  # skeleton — same fail-closed contract as english-only/boundary-check. NOT a required check
+  # yet (branch protection stays at english-only/boundary-check/factory-tests): there's no
+  # product code for it to gate on until EVP3. BASE_SHA is the PR's base commit on a
+  # pull_request event, or the pre-push commit (github.event.before) on a direct push to
+  # main — never left empty on either event, since an empty BASE_SHA falls back to
+  # unconditional mode and would fail every push against the still-empty project/ skeleton,
+  # not "exit 0 on the empty skeleton" as intended. `fetch-depth: 0` so that diff has real
+  # history to compare against.
+  contract-gates:
+    name: contract-gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node .github/scripts/gate-design-md.mjs
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+      - run: node .github/scripts/gate-contracts.mjs
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+
   # Deterministic, cheap, and the single place product jobs (lint/test/build of app/) will
   # attach to once a profile exists. `app/` today only carries its own README.md and the
   # per-subfolder `.gitkeep` placeholders (see project/README.md and app/README.md for the

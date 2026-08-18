@@ -1,4 +1,7 @@
-#!/usr/bin/env node
+// No shebang: this module is now IMPORTED (its `validate` export is reused by
+// gate-contracts.mjs and gate-definition-done.mjs, and by their tests), and vitest's
+// transformer rejects a leading `#!` line. Always invoked as `node .github/scripts/
+// gate-design-md.mjs`, never as `./gate-design-md.mjs` directly.
 /**
  * Deterministic (NON-AI) gate — "the design contract exists and is approved".
  *
@@ -29,6 +32,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 /**
  * What counts as "touches UI". `project/design/DESIGN.md` itself is included because editing
@@ -94,7 +98,7 @@ function changedFiles() {
  * `| **Status** | \`[TO FILL IN]\` — \`candidate\` \| \`approved\` |`, so an unedited copy of
  * the template trips both at once.
  */
-function validate(content) {
+export function validate(content) {
 	const lines = content.split('\n');
 	const placeholders = lines
 		.map((line, i) => (line.includes('[TO FILL IN]') ? i + 1 : 0))
@@ -164,4 +168,9 @@ function main() {
 	return 0;
 }
 
-process.exit(main());
+// Importable without side effects (the ui-routes.mjs / lint-antipatterns.mjs lesson): only
+// run as a CLI when this file is the actual entry point, never when another script or a
+// test imports `validate` from it.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+	process.exit(main());
+}
