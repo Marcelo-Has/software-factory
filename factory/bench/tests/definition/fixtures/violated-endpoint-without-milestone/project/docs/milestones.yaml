@@ -1,0 +1,12 @@
+milestones:
+  - id: M-1
+    name: Everything
+    screens: [S-widgets]
+    features: [F-1]
+    endpoints: [listWidgets]
+    integrations: [I-payments]
+    budget:
+      turns: 10
+      usd: 5
+    acceptance:
+      - Widgets can be listed.

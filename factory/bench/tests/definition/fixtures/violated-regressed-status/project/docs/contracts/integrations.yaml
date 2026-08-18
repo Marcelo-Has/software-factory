@@ -1,0 +1,16 @@
+integrations:
+  - id: I-payments
+    kind: payment provider
+    events:
+      - payment.succeeded
+    objects:
+      - Widget
+    webhooks:
+      - operationId: handlePaymentWebhook
+        idempotency_key: external_event_id
+    secrets:
+      - PAYMENT_PROVIDER_API_KEY
+    sandbox_available: true
+    mock_trust_note: >
+      Exercised hermetically: HTTP interception in-process; the webhook is exercised by
+      POSTing a synthetic payload straight at handlePaymentWebhook.

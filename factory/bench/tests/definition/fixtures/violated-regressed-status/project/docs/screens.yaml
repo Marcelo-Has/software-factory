@@ -1,0 +1,11 @@
+screens:
+  - id: S-widgets
+    name: Widgets
+    area: app
+    route: /widgets
+    states:
+      - default
+    mockup_states:
+      - default
+
+areas_without_screens: [marketing, admin, email]
