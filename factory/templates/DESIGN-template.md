@@ -121,7 +121,7 @@ decides the *taste*; it doesn't touch the *floor*.
      "how X does Y" — the name alone is useless because it doesn't say what's being borrowed.
      Minimum 2 of each. Anti-references are just as mandatory as references — they're what
      closes the door the direction wants closed. If something has a public link, put it in
-     design/assets/references.md and cite it here (see
+     project/design/assets/references.md and cite it here (see
      factory/templates/BRAND-ASSETS-template.md). -->
 
 **References — minimum 2:**
@@ -528,10 +528,11 @@ defect.
 <!-- HOW TO FILL: for every decision recorded above, where it came from. This section exists
      because a design system should be born from existing brand assets when they exist, with
      provenance recorded here. The directory convention lives in
-     factory/templates/BRAND-ASSETS-template.md — the Foundation READS design/assets/ BEFORE
-     creating anything; creating from scratch is only for what's genuinely absent. Three
+     factory/templates/BRAND-ASSETS-template.md — the Foundation READS project/design/assets/
+     BEFORE creating anything; creating from scratch is only for what's genuinely absent. Three
      possible origins:
-       · derived-from-asset      — extracted from a file in design/assets/ (cite the file)
+       · derived-from-asset      — extracted from a file in project/design/assets/ (cite the
+                                    file)
        · created-in-Foundation   — no asset existed; the Foundation proposed and the gate
                                     approved it
        · inherited-from-existing-DS — comes from a design system the project already uses
@@ -542,11 +543,11 @@ defect.
 | --- | --- | --- | --- |
 | `[TO FILL IN]` | `[TO FILL IN]` | `derived-from-asset` \| `created-in-Foundation` \| `inherited-from-existing-DS` | `[TO FILL IN]` |
 
-> _Example row:_ Base palette · §4.1 · `derived-from-asset` · `design/assets/palette.md` +
-> `design/assets/logos/primary-mark.svg`.
+> _Example row:_ Base palette · §4.1 · `derived-from-asset` · `project/design/assets/palette.md`
+> + `project/design/assets/logos/primary-mark.svg`.
 
 **Assets read during this Foundation:** `[TO FILL IN]` — the list of what existed in
-`design/assets/` as of the §0 date. If the directory was empty, say so: that's what justifies
+`project/design/assets/` as of the §0 date. If the directory was empty, say so: that's what justifies
 the `created-in-Foundation` rows.
 
 ---

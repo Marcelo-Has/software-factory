@@ -57,7 +57,7 @@ project/
 
 `logos/` and `images/` start empty (a `.gitkeep` each, so git tracks the empty directory);
 `palette.md` and `references.md` start as empty files — `design-foundation`'s R-ASSETS step
-(`.claude/skills/design-foundation/SKILL.md` §1) reads all four `design/assets/` items
+(`.claude/skills/design-foundation/SKILL.md` §1) reads all four `project/design/assets/` items
 explicitly expecting some of them to be empty. Remove any placeholder `.gitkeep` this creation
 step makes redundant (e.g. a bare `project/docs/.gitkeep` once `project/docs/` holds real
 subdirectories) — a leftover placeholder next to real content reads as forgotten, not
