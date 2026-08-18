@@ -106,9 +106,11 @@ jobs:
           prompt: |
             Do a SECURITY review of this PR against the baseline in `.claude/rules/security.md`.
             Look for: injection (SQL/XSS/command), authentication/authorization failures, PII
-            exposure, hardcoded secrets, unsigned asset URLs, unverified webhook signatures, and
-            loose BaaS access rules for the active profile. Report with severity and a concrete
-            fix. Flag high risks as blocking.
+            exposure, hardcoded secrets, unsigned asset URLs, unverified webhook signatures,
+            loose BaaS access rules for the active profile, missing idempotency on a route where
+            `project/docs/nfr.md` requires it, and external-failure/invalid-input error paths
+            that leak a stack trace or PII. Report with severity and a concrete fix. Flag high
+            risks as blocking.
 
             You have NO ability to publish to GitHub: instead of commenting on the PR, WRITE the
             complete verdict — even if it's "No problems found" — to the file
@@ -182,7 +184,9 @@ jobs:
             This is a retry after an infra failure on the first attempt. Do a SECURITY review of
             this PR against `.claude/rules/security.md`: injection, authn/authz failures, PII
             exposure, hardcoded secrets, unsigned asset URLs, unverified webhooks, loose BaaS
-            rules. Report severity and a concrete fix; flag high risks as blocking.
+            rules, missing idempotency where `project/docs/nfr.md` requires it, and external
+            error paths that leak a stack trace or PII. Report severity and a concrete fix; flag
+            high risks as blocking.
 
             You have NO ability to publish to GitHub: WRITE the complete verdict to
             ${{ runner.temp }}/security-verdict.md. A separate, non-AI step publishes it.
