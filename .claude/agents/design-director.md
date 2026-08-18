@@ -100,9 +100,9 @@ fill it in **field by field**, deleting the instruction lines (`<!-- HOW TO FILL
 and `> _Example:_`) and keeping the "three rules of this document" section.
 
 - **§0 `Status: candidate`**, dated. **`Gate` field left empty** — that belongs to the owner.
-- **No `[TO FILL]` left over.** A `DESIGN.md` with any `[TO FILL]` remaining isn't a candidate
-  for approval. A field that doesn't apply gets `Not applicable —` **followed by the reason**:
-  a deleted field is a forgotten field, a field with a reason is a decision.
+- **No `[TO FILL IN]` left over.** A `DESIGN.md` with any `[TO FILL IN]` remaining isn't a
+  candidate for approval. A field that doesn't apply gets `Not applicable —` **followed by
+  the reason**: a deleted field is a forgotten field, a field with a reason is a decision.
 - **§14 Provenance** complete: every decision with its origin (`derived-from-asset` /
   `created-at-Foundation` / `inherited-from-existing-DS`) and the cited source, plus the
   **list of assets read** in step 1.
