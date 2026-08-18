@@ -4,7 +4,7 @@ import { merge, splitParts } from '../../../../.github/scripts/merge-critic-pass
 
 /**
  * The `design-critic`'s two passes (the dual-pass verdict guard-rail — see
- * `factory/docs/FACTORY.md`, D-087).
+ * `factory/docs/FACTORY.md`, GR-5).
  *
  * Two behaviors decide, on their own, whether a UI PR passes, and neither is verifiable by
  * reading the YAML:

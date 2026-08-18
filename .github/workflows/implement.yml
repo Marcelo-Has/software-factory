@@ -7,7 +7,7 @@ name: Implement
 # contract) lives in `.claude/agents/developer-lead.md`, which this prompt points to and does
 # not restate.
 on:
-  # Explicit re-dispatch, without having to remove and re-apply a label (D-019).
+  # Explicit re-dispatch, without having to remove and re-apply a label (GR-1).
   workflow_dispatch:
     inputs:
       issue:
@@ -26,7 +26,7 @@ permissions:
   actions: write
 
 # One run per issue. `cancel-in-progress: false` on purpose: cancelling a pending run would
-# lose the issue in silence — exactly the failure mode D-019's exit guard-rail exists to
+# lose the issue in silence — exactly the failure mode GR-1's exit guard-rail exists to
 # close. Serializing DIFFERENT issues is an operational concern (dispatch one at a time), not
 # this workflow's — parallel runs here have been shown to starve each other's first turn.
 concurrency:
@@ -173,7 +173,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Delivery-completeness labels (D-019), created here rather than by the agent, so it
+      # Delivery-completeness labels (GR-1), created here rather than by the agent, so it
       # doesn't spend a turn on it. `--force` keeps the step idempotent.
       - name: Ensure delivery labels exist
         env:
@@ -429,7 +429,7 @@ jobs:
           fi
           echo "Transcript redacted before upload."
 
-      # Observability (D-019): the artifact carries the full transcript without printing it to
+      # Observability (GR-1): the artifact carries the full transcript without printing it to
       # the job log. Cost: zero tokens.
       # `always()`, not `failure()`: the exit guard-rail runs AFTER this step, so at upload time
       # a run that's only going to fail the guard-rail hasn't failed yet — and it's exactly that
@@ -443,7 +443,7 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-      # Exit guard-rail (part 2/2) — the D-019 exit contract enforced mechanically, in the same
+      # Exit guard-rail (part 2/2) — the GR-1 exit contract enforced mechanically, in the same
       # spirit as review.yml/security.yml's non-AI publish step. Without this step, a run that
       # produces NOTHING — no branch, no PR, no comment — exits green. Cost: no call to the
       # Claude API, just `gh`.
@@ -489,7 +489,7 @@ jobs:
           if [ "$DEV_OUTCOME" = 'skipped' ]; then
             cause='The developer-lead **never ran**: an earlier workflow step failed (infra, not the agent).'
           else
-            cause='The developer-lead ran and finished without producing anything — the silent no-op D-019 exists to catch.'
+            cause='The developer-lead ran and finished without producing anything — the silent no-op GR-1 exists to catch.'
           fi
 
           # Matches a CLOSING KEYWORD + `#N`, not a bare `#N`. A bare mention is a false
@@ -549,7 +549,7 @@ jobs:
               '' \
               'What is missing is listed in the PR body. The job stays red on purpose: incomplete delivery is not delivery.')"
 
-            # RE-ENTRY (D-047). Until here the factory only SAW the stall (Verdict would
+            # RE-ENTRY (GR-4). Until here the factory only SAW the stall (Verdict would
             # comment, the daily report would list it) and nothing put a developer-lead back on
             # the branch. This is the actuator.
             #
@@ -562,7 +562,7 @@ jobs:
             # only it matters more here: this block WRITES the `reentry:N` counter and
             # dispatches the next session. Picking the wrong PR would record the count on a
             # third party's PR, the legitimate PR's counter would never advance, and the
-            # 3-attempt ceiling — the cost control D-047 calls "the expensive decision" — would
+            # 3-attempt ceiling — the cost control GR-4 calls "the expensive decision" — would
             # stop existing. The asymmetry between who READS the counter (resume, filtered) and
             # who WRITES it (here) needs the same care on both sides.
             open_pr=$(jq -r --arg owner "$OWNER" '[.[]

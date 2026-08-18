@@ -1,6 +1,6 @@
 /**
  * Merges the `design-critic`'s two independent passes into one verdict (the F2/dual-pass
- * guard-rail — see `factory/docs/FACTORY.md`, D-087).
+ * guard-rail — see `factory/docs/FACTORY.md`, GR-5).
  *
  * WHY TWO PASSES. Measuring several pairs of twin critic runs — same commit, same instant,
  * identical pipeline — showed the verdicts diverging, and the divergence wasn't about

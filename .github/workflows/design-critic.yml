@@ -49,7 +49,7 @@ permissions:
 
 jobs:
   design-critic:
-    # Same gate as `review.yml` (D-019): visually criticizing a state the developer-lead is
+    # Same gate as `review.yml` (GR-1): visually criticizing a state the developer-lead is
     # still going to rewrite pays for the factory's most expensive AI round (every route, every
     # viewport, full-page) over a screen that won't exist. The label swap fires `labeled`,
     # bringing the critique back over the final state.
@@ -61,7 +61,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
-      # Critic integrity — the same D-033 block as `review.yml`/`security.yml`/`verdict.yml`,
+      # Critic integrity — the same GR-6 block as `review.yml`/`security.yml`/`verdict.yml`,
       # with ONE extension that only exists here and is the point of this step: the critic's
       # ruler lives OUTSIDE `.claude/`. Without restoring `factory/docs/` from the base, a UI PR
       # could rewrite the very criteria it's about to be judged against.
@@ -152,7 +152,7 @@ jobs:
           VERDICT_FILE: ${{ runner.temp }}/design-critic-verdict.md
         run: node .github/scripts/check-visual-evidence.mjs
 
-      # TWO INDEPENDENT PASSES (D-087). A single critic pass samples the contract — it doesn't
+      # TWO INDEPENDENT PASSES (GR-5). A single critic pass samples the contract — it doesn't
       # cover it exhaustively — so a real, high-severity defect can survive many rounds by never
       # landing in one pass's sample. Two passes with an IDENTICAL prompt exist because the
       # diversity has to come from sampling, not from different instructions — different
@@ -207,7 +207,7 @@ jobs:
               step already guaranteed they're all there.
             - The disk DIVERGES from the commit on purpose: a step in this job restored
               `CLAUDE.md`, `.claude/`, the rubric, and the playbooks from the BASE branch
-              (D-033), so this PR can't rewrite the criteria that judge it. So, to claim the PR
+              (GR-6), so this PR can't rewrite the criteria that judge it. So, to claim the PR
               changed, removed, or weakened anything, confirm it in `gh pr diff`. Didn't see the
               line? Don't claim it.
             - If `gh pr diff` shows a change to any APPROVED section of `project/design/DESIGN.md`,
@@ -293,7 +293,7 @@ jobs:
             `.claude/rules/design-antipatterns.md` (the [CRITIC] items), in that order. Read
             every screenshot in `artifacts/screenshots/`. Judge the PIXEL — the disk's
             `CLAUDE.md`/`.claude/` and `project/design/DESIGN.md`'s approved sections are
-            authoritative per D-033; confirm any claimed change via `gh pr diff`.
+            authoritative per GR-6; confirm any claimed change via `gh pr diff`.
 
             WRITE the complete verdict to ${{ runner.temp }}/design-critic-verdict-a.md: a title
             `## design-critic — <APPROVED|REJECTED>`, one finding per line
@@ -306,7 +306,7 @@ jobs:
             verdict file with what you have.
           claude_args: '--max-turns 60 --model claude-sonnet-5 --allowed-tools "Read,Glob,Grep,Write,TodoWrite,Bash(ls:*),Bash(git log:*),Bash(git show:*),Bash(gh pr view:*),Bash(gh pr diff:*)"'
 
-      # THE SECOND SAMPLE. Prompt identical to Pass A's — the coverage difference D-087 measures
+      # THE SECOND SAMPLE. Prompt identical to Pass A's — the coverage difference GR-5 measures
       # comes from sampling, not from different instructions. Runs even if A failed
       # (`if: always()`): a lost pass can't cost both, and the merge step handles either one
       # being missing.
@@ -356,7 +356,7 @@ jobs:
               step already guaranteed they're all there.
             - The disk DIVERGES from the commit on purpose: a step in this job restored
               `CLAUDE.md`, `.claude/`, the rubric, and the playbooks from the BASE branch
-              (D-033), so this PR can't rewrite the criteria that judge it. So, to claim the PR
+              (GR-6), so this PR can't rewrite the criteria that judge it. So, to claim the PR
               changed, removed, or weakened anything, confirm it in `gh pr diff`. Didn't see the
               line? Don't claim it.
             - If `gh pr diff` shows a change to any APPROVED section of `project/design/DESIGN.md`,
@@ -434,7 +434,7 @@ jobs:
             `.claude/rules/design-antipatterns.md` (the [CRITIC] items), in that order. Read
             every screenshot in `artifacts/screenshots/`. Judge the PIXEL — the disk's
             `CLAUDE.md`/`.claude/` and `project/design/DESIGN.md`'s approved sections are
-            authoritative per D-033; confirm any claimed change via `gh pr diff`.
+            authoritative per GR-6; confirm any claimed change via `gh pr diff`.
 
             WRITE the complete verdict to ${{ runner.temp }}/design-critic-verdict-b.md: a title
             `## design-critic — <APPROVED|REJECTED>`, one finding per line
@@ -448,17 +448,17 @@ jobs:
           claude_args: '--max-turns 60 --model claude-sonnet-5 --allowed-tools "Read,Glob,Grep,Write,TodoWrite,Bash(ls:*),Bash(git log:*),Bash(git show:*),Bash(gh pr view:*),Bash(gh pr diff:*)"'
 
       # Discards the credential `claude-code-action` writes to `.git/config` during its own
-      # bootstrap. See D-032 and the longer comment in `review.yml`.
+      # bootstrap. See GR-9 and the longer comment in `review.yml`.
       - name: Discard the .git/config credential after the agent
         if: always()
         run: |
           git config --unset-all http.https://github.com/.extraheader || true
           git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
 
-      # D-042, applied. One divergence here is expected beyond `review.yml`'s — the PNGs
+      # GR-7, applied. One divergence here is expected beyond `review.yml`'s — the PNGs
       # downloaded into `artifacts/`, which `.gitignore` covers — which is exactly why the
       # baseline is taken AFTER restoration and BEFORE the download.
-      - name: Check for workspace divergence (D-042)
+      - name: Check for workspace divergence (GR-7)
         if: always()
         run: |
           set -euo pipefail
@@ -507,8 +507,8 @@ jobs:
           if [ -s "$DIVERGENCE" ]; then
             {
               echo "> [!WARNING]"
-              echo "> **The runner's workspace diverged from the commit under critique** (D-042)."
-              echo "> These paths changed outside the config/rubric restoration ([D-033]):"
+              echo "> **The runner's workspace diverged from the commit under critique** (GR-7)."
+              echo "> These paths changed outside the config/rubric restoration ([GR-6]):"
               sed 's/^/> - `/; s/$/`/' "$DIVERGENCE"
               echo ">"
               echo "> The verdict below may describe the DISK, not the render. Check it against"
@@ -542,6 +542,6 @@ jobs:
           VERDICT_FILE: ${{ runner.temp }}/design-critic-verdict.md
           PR: ${{ github.event.pull_request.number }}
           # Without this the round goes back to being counted by job invocation, and two runs of
-          # the same commit spend two rounds of the ceiling (D-087).
+          # the same commit spend two rounds of the ceiling (GR-5).
           SHA: ${{ github.event.pull_request.head.sha }}
         run: node .github/scripts/critic-verdict.mjs

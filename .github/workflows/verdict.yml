@@ -31,7 +31,7 @@ jobs:
     #
     # `head_repository.full_name == github.repository` limits this to branches of the repo
     # itself. A fork's PR simply gets no automatic verdict — the verdict is a convenience, the
-    # secret is not. See D-039.
+    # secret is not. See GR-8.
     if: >-
       ${{ github.event.workflow_run.conclusion == 'success' &&
           github.event.workflow_run.head_repository.full_name == github.repository }}
@@ -47,7 +47,7 @@ jobs:
           # `head_sha` is the commit the event carries and that `CI` actually validated.
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      # Judge integrity (D-033). The checkout above is the branch UNDER JUDGMENT, and
+      # Judge integrity (GR-6). The checkout above is the branch UNDER JUDGMENT, and
       # `claude-code-action` loads `CLAUDE.md`/`.claude/` from the workspace. Without this step,
       # a PR that edits `.claude/agents/verdict.md`, `CLAUDE.md`, or `.claude/rules/*` would
       # rewrite the instructions of the judge about to judge that same PR. The agent's config
@@ -95,13 +95,13 @@ jobs:
           # that doesn't cover `.git/**`, that token would be readable and publishable via
           # `gh pr comment`, which the agent has. Transcript redaction protects the uploaded
           # artifact, not a comment the agent itself writes — this `unset-all` is the second
-          # layer that closes the read path at the source. See D-032.
+          # layer that closes the read path at the source. See GR-9.
           git config --unset-all http.https://github.com/.extraheader || true
 
           echo "Agent config restored from ${BASE}; checkout credential discarded."
 
       # Only judges a PR still `delivery:incomplete` — complete doesn't need a verdict again,
-      # and without that label the PR isn't the factory's (D-019).
+      # and without that label the PR isn't the factory's (GR-1).
       #
       # And only judges if the PR's head is STILL the commit CI approved. The checkout's
       # `ref: head_sha` above only pins the DISK; the `gh pr diff` the prompt reads and the
@@ -248,7 +248,7 @@ jobs:
             task: judge whether PR #${{ steps.check.outputs.pr }} now meets its issue's
             acceptance criteria. Read the PR, the issue it closes (by closing keyword + `#N`,
             never a bare mention), and `gh pr diff`. `CLAUDE.md`/`AGENTS.md`/`.mcp.json`/
-            `.claude/` on disk are the BASE branch's version by design (D-033) — check those
+            `.claude/` on disk are the BASE branch's version by design (GR-6) — check those
             specific paths via the diff, not the disk.
 
             Criteria met -> `gh pr edit ${{ steps.check.outputs.pr }} --title "<title without [WIP]>" \
@@ -289,7 +289,7 @@ jobs:
       # Discards the credential `claude-code-action` writes to `.git/config` during its own
       # bootstrap — a different key than the `extraheader` from `actions/checkout` (already
       # cleared above, before the agent ran). This second discard closes the window for the
-      # redact/upload/guard-rail steps below. See D-032.
+      # redact/upload/guard-rail steps below. See GR-9.
       - name: Discard the .git/config credential after the agent
         if: always() && steps.check.outputs.run == 'true'
         run: |

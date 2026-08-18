@@ -6,12 +6,12 @@ name: Security
 on:
   pull_request:
     # `labeled`/`unlabeled` are here because AI review is gated by the completeness label
-    # (D-019): swapping `delivery:incomplete` for `delivery:complete` does NOT emit
+    # (GR-1): swapping `delivery:incomplete` for `delivery:complete` does NOT emit
     # `synchronize`, so without these two events a PR that finishes on a label swap — no push
     # after — would never be reviewed.
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
-# The developer-lead pushes a commit at every step (D-019). Without this, every push would pay
+# The developer-lead pushes a commit at every step (GR-1). Without this, every push would pay
 # for a full high-cost review round of a state it's about to rewrite on the next push.
 concurrency:
   group: security-${{ github.event.pull_request.number }}
@@ -45,7 +45,7 @@ jobs:
         run: npm audit --audit-level=high
 
   ai-security-review:
-    # Don't review a PR marked `delivery:incomplete` (D-019). The gate matters more here than
+    # Don't review a PR marked `delivery:incomplete` (GR-1). The gate matters more here than
     # in `review.yml`: this job runs a stronger model. The `scans` job above (gitleaks + npm
     # audit) runs ungated — it isn't AI, costs seconds, and a committed secret should scream on
     # the first push.
@@ -79,7 +79,7 @@ jobs:
             | grep -E '(^|/)(CLAUDE\.md|AGENTS\.md|\.mcp\.json)$|(^|/)\.claude/' \
             | xargs -r git checkout FETCH_HEAD --
 
-          # Discard the credential `actions/checkout` persisted in `.git/config` (D-032):
+          # Discard the credential `actions/checkout` persisted in `.git/config` (GR-9):
           # `persist-credentials` defaults to `true`.
           git config --unset-all http.https://github.com/.extraheader || true
 
@@ -116,10 +116,10 @@ jobs:
             as a PR comment. `Write` is only for that file; don't change anything else in the
             repository.
 
-            WHERE THE TRUTH COMES FROM — read this before opening any file (D-042). What you
+            WHERE THE TRUTH COMES FROM — read this before opening any file (GR-7). What you
             judge is this PR's COMMIT, not this runner's disk. The two DIVERGE on purpose: an
             earlier step in this job erased `CLAUDE.md`, `AGENTS.md`, `.mcp.json` and `.claude/`
-            from the branch and put the BASE branch's version in their place (D-033), so a PR
+            from the branch and put the BASE branch's version in their place (GR-6), so a PR
             can't rewrite the instructions of the reviewer about to judge it. If this PR changes
             any of those paths, the DISK shows the BASE version, and reading the disk makes you
             report that the PR "removed" exactly what it ADDS.
@@ -189,7 +189,7 @@ jobs:
 
             Judge the COMMIT via `gh pr diff` / `git show <sha>:<path>`, never the disk at
             `CLAUDE.md`/`AGENTS.md`/`.mcp.json`/`.claude/` — those were restored from the base
-            branch (D-033) and show the BASE version even where this PR changes them.
+            branch (GR-6) and show the BASE version even where this PR changes them.
 
             You have 80 turns and ONLY: Read, Glob, Grep, Write, TodoWrite, and Bash restricted
             to ls/git log/git show/gh pr view/gh pr diff. If the budget is running low, STOP and
@@ -198,15 +198,15 @@ jobs:
 
       # Discards the credential `claude-code-action` writes to `.git/config` during its own
       # bootstrap — a different key than the `extraheader` `actions/checkout` persists (already
-      # covered above). See D-032.
+      # covered above). See GR-9.
       - name: Discard the .git/config credential after the agent
         if: always()
         run: |
           git config --unset-all http.https://github.com/.extraheader || true
           git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
 
-      # D-042, applied — identical to `review.yml`.
-      - name: Check for workspace divergence (D-042)
+      # GR-7, applied — identical to `review.yml`.
+      - name: Check for workspace divergence (GR-7)
         if: always()
         run: |
           set -euo pipefail
@@ -223,7 +223,7 @@ jobs:
             echo "Workspace has no unexpected divergence."
           fi
 
-      # Publishes the verdict and stands in as the non-AI publication guard-rail (D-034/D-037) —
+      # Publishes the verdict and stands in as the non-AI publication guard-rail (GR-2/GR-3) —
       # see `review.yml`.
       - name: Publish the verdict on the PR (non-AI step)
         if: always()
@@ -242,8 +242,8 @@ jobs:
           if [ -s "$DIVERGENCE" ]; then
             {
               echo "> [!WARNING]"
-              echo "> **The runner's workspace diverged from the reviewed commit** (D-042)."
-              echo "> These paths changed outside the agent-config restoration ([D-033]):"
+              echo "> **The runner's workspace diverged from the reviewed commit** (GR-7)."
+              echo "> These paths changed outside the agent-config restoration ([GR-6]):"
               sed 's/^/> - `/; s/$/`/' "$DIVERGENCE"
               echo ">"
               echo "> The verdict below may describe the DISK, not the diff. Check it against"

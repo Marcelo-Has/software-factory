@@ -6,12 +6,12 @@ name: Review
 on:
   pull_request:
     # `labeled`/`unlabeled` are here because review is gated by the completeness label
-    # (D-019): swapping `delivery:incomplete` for `delivery:complete` does NOT emit
+    # (GR-1): swapping `delivery:incomplete` for `delivery:complete` does NOT emit
     # `synchronize`, so without these two events a PR that finishes on a label swap — no push
     # after — would never be reviewed.
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
-# The developer-lead pushes a commit at every step (D-019). Without this, every push would pay
+# The developer-lead pushes a commit at every step (GR-1). Without this, every push would pay
 # for a full AI review round of a state it's about to rewrite on the next push.
 concurrency:
   group: review-${{ github.event.pull_request.number }}
@@ -26,7 +26,7 @@ permissions:
 
 jobs:
   review:
-    # Don't review a PR marked `delivery:incomplete` (D-019): reviewing code the developer-lead
+    # Don't review a PR marked `delivery:incomplete` (GR-1): reviewing code the developer-lead
     # is still going to rewrite pays for an AI round over a state that won't exist. A reviewable
     # state is `delivery:complete` — and the label swap fires `labeled`, bringing review back
     # over the final state.
@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
-      # Reviewer integrity (D-033). The checkout above is the branch UNDER REVIEW, and
+      # Reviewer integrity (GR-6). The checkout above is the branch UNDER REVIEW, and
       # `claude-code-action` loads `CLAUDE.md`/`.claude/` from the workspace — including any
       # `command`-type `hooks.PreToolUse` in `.claude/settings.json`, which is arbitrary command
       # execution on this runner, which holds `ANTHROPIC_API_KEY`/`GITHUB_TOKEN`. Without this
@@ -60,7 +60,7 @@ jobs:
             | grep -E '(^|/)(CLAUDE\.md|AGENTS\.md|\.mcp\.json)$|(^|/)\.claude/' \
             | xargs -r git checkout FETCH_HEAD --
 
-          # Discard the credential `actions/checkout` persisted in `.git/config` (D-032):
+          # Discard the credential `actions/checkout` persisted in `.git/config` (GR-9):
           # `persist-credentials` defaults to `true`.
           git config --unset-all http.https://github.com/.extraheader || true
 
@@ -98,11 +98,11 @@ jobs:
             as a PR comment. `Write` is only for that file; don't change anything else in the
             repository.
 
-            WHERE THE TRUTH COMES FROM — read this before opening any file (D-042). What you
+            WHERE THE TRUTH COMES FROM — read this before opening any file (GR-7). What you
             judge is this PR's COMMIT, not this runner's disk. The two DIVERGE on purpose: an
             earlier step in this job erased `CLAUDE.md`, `AGENTS.md`, `.mcp.json` and
             `.claude/` from the branch and put the BASE branch's version in their place
-            (D-033), so a PR can't rewrite the instructions of the reviewer about to judge it.
+            (GR-6), so a PR can't rewrite the instructions of the reviewer about to judge it.
             Direct consequence: if this PR changes any of those paths, the DISK shows the BASE
             version, and reading the disk makes you report that the PR "removed" exactly what
             it ADDS. This is a known failure mode — an inverted verdict is exactly what it
@@ -182,7 +182,7 @@ jobs:
 
             WHERE THE TRUTH COMES FROM. What you judge is this PR's COMMIT via `gh pr diff` /
             `git show <sha>:<path>`, never the disk at `CLAUDE.md`/`AGENTS.md`/`.mcp.json`/
-            `.claude/` — those were deliberately restored from the base branch (D-033) and will
+            `.claude/` — those were deliberately restored from the base branch (GR-6) and will
             show the BASE version even where this PR changes them.
 
             You have 80 turns and ONLY: Read, Glob, Grep, Write, TodoWrite, and Bash restricted
@@ -195,18 +195,18 @@ jobs:
       # persists (which the `unset-all` above already covers). The action writes this during its
       # own opaque step, so there's no way to clean it BEFORE the agent could read it — only
       # after. This closes the window for the rest of the job (the guard-rail below); it doesn't
-      # close the read the agent itself could do while the action runs. See D-032.
+      # close the read the agent itself could do while the action runs. See GR-9.
       - name: Discard the .git/config credential after the agent
         if: always()
         run: |
           git config --unset-all http.https://github.com/.extraheader || true
           git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
 
-      # D-042, applied. Diagnostic and guard-rail in the same step on purpose: a `git status`
+      # GR-7, applied. Diagnostic and guard-rail in the same step on purpose: a `git status`
       # that only existed in the log depends on someone going to look — this makes any
       # divergence BEYOND the expected one show up in the run log and turn into a warning on the
       # verdict itself, instead of turning into an inverted verdict nobody can explain.
-      - name: Check for workspace divergence (D-042)
+      - name: Check for workspace divergence (GR-7)
         if: always()
         run: |
           set -euo pipefail
@@ -225,7 +225,7 @@ jobs:
             echo "Workspace has no unexpected divergence."
           fi
 
-      # Publishes the verdict AND stands in as the non-AI publication guard-rail (D-034/D-037):
+      # Publishes the verdict AND stands in as the non-AI publication guard-rail (GR-2/GR-3):
       # either a verdict file exists and gets published, or the job fails. No inference by actor
       # or by a comment-counting time window — those heuristics break the moment something
       # upstream changes who posts, or another bot comments on every PR for an unrelated reason.
@@ -248,8 +248,8 @@ jobs:
           if [ -s "$DIVERGENCE" ]; then
             {
               echo "> [!WARNING]"
-              echo "> **The runner's workspace diverged from the reviewed commit** (D-042)."
-              echo "> These paths changed outside the agent-config restoration ([D-033]):"
+              echo "> **The runner's workspace diverged from the reviewed commit** (GR-7)."
+              echo "> These paths changed outside the agent-config restoration ([GR-6]):"
               sed 's/^/> - `/; s/$/`/' "$DIVERGENCE"
               echo ">"
               echo "> The verdict below may describe the DISK, not the diff. Check it against"

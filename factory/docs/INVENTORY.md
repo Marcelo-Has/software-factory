@@ -23,6 +23,7 @@ Tag: this state is tagged `factory-core-v0` (annotated).
 | `package-lock.json` | Lockfile for the above. | S1/S5 |
 | `vitest.config.ts` | Points the harness at `factory/bench/tests/**`; `npm test` = the whole suite. | S5 |
 | `.gitignore` | Standard ignores (`node_modules`, build output). | S1 |
+| `.gitattributes` | Normalizes line endings (`text=auto` + explicit LF for `.mjs`/`.yml`/`.ts`/`.json`/`.md`, binary marker for `.png`) so Windows checkouts don't produce CRLF phantom diffs. | S7 |
 
 ## `.claude/` — Claude Code config, native subagents, rules, skills
 
@@ -105,6 +106,7 @@ boilerplate, superseded by the hardened `review.yml`/`security.yml`. See D-003.
 | `factory/docs/playbooks/mobile.md` | Playbook: mobile product shape. | S2 |
 | `factory/docs/playbooks/saas-dashboard.md` | Playbook: SaaS-dashboard product shape. | S2 |
 | `factory/docs/INVENTORY.md` | This file — the repo's own baseline photo. | S6 |
+| `factory/docs/REPO-STRUCTURE.md` | The repo tree map: one section per top-level directory's contract, `.claude/` conventions, where each regime's pieces live. | S7 |
 
 ## `factory/templates/` — artifact templates, instantiated into `project/`
 
@@ -129,6 +131,7 @@ boilerplate, superseded by the hardened `review.yml`/`security.yml`. See D-003.
 | Path | Purpose | Origin decision |
 |---|---|---|
 | `factory/checklists/.gitkeep` | Placeholder — real content is an EVP2 deliverable. | S1 |
+| `factory/checklists/README.md` | Directory contract: ships empty in the core, real checklists land in EVP2, never written per-product. | S7 |
 
 ## `factory/bench/` — the harness
 
@@ -148,6 +151,7 @@ boilerplate, superseded by the hardened `review.yml`/`security.yml`. See D-003.
 | `factory/bench/tests/design/states.test.ts` | Reads `project/design/DESIGN.md`'s required-states table; **self-skips** on the empty skeleton. | D-004 (S5) |
 | `factory/bench/tests/design/style.test.ts` | Lints fixtures against `stylelint.config.js`; last sub-test reads `app/web` live and **self-skips**. | D-004 (S5) |
 | `factory/bench/tests/design/tokens.test.ts` | Reads `app/web/src/lib/styles/tokens.css`; **self-skips** on the empty skeleton. | D-004 (S5) |
+| `factory/bench/tests/design/a11y-baseline.json` | Ratchet baseline for a future a11y gate: axe rules tolerated per `<route>@<width>`. Ported from the source repo's `tests/design/a11y-baseline.json`, generalized (translated to English, origin product route names replaced by the single `/` route placeholder `ui-routes.mjs` already uses) since nothing in this repo's harness consumes it yet — `lighthouse-a11y.mjs` still gates on a fixed `FLOOR`, not this file. | S7 |
 | `factory/bench/tests/design/fixtures/README.md` | Fixture index. | S5 |
 | `factory/bench/tests/design/fixtures/antipatterns-clean.svelte` | Fixture: no antipatterns present. | S5 |
 | `factory/bench/tests/design/fixtures/antipatterns-empty-justification.svelte` | Fixture: antipattern with an empty justification. | S5 |
@@ -170,7 +174,7 @@ boilerplate, superseded by the hardened `review.yml`/`security.yml`. See D-003.
 
 ## Known gaps vs. the port map (see the S6 session report for detail)
 
-- `factory/docs/REPO-STRUCTURE.md` (port map §2.1) was never created.
-- `factory/bench/tests/design/a11y-baseline.json` (port map §2.6) was never created; nothing
-  in this repo references it (`lighthouse-a11y.mjs` uses a fixed `FLOOR`, not a baseline
-  file).
+Both gaps below were closed in session S7 (the audit-fixes session) — see `DECISIONS.md`
+D-005/D-006 and the rows above. `factory/bench/tests/design/a11y-baseline.json` still has
+no consumer in this repo's harness (`lighthouse-a11y.mjs` still gates on a fixed `FLOOR`);
+wiring a ratchet-based a11y gate against it is a future EVP2 concern, not this session's.
