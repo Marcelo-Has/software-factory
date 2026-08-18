@@ -1,0 +1,8 @@
+{
+	"description": "Ratchet baseline for the a11y gate (WCAG 2.2 AA floor). Per `<route>@<width>`, the axe rules (by id, impact critical or serious) this product currently tolerates. Empty list = no tolerance, which is the desired and current state. Adding an id here is a conscious, diff-reviewable decision: write the reason alongside, as `<route>@<width>: <id> — <why>`. The ratchet moves both ways: an id that fires without being listed here fails, and an id that is listed here but no longer fires also fails.",
+	"reasons": {},
+	"tolerated": {
+		"/@375": [],
+		"/@1280": []
+	}
+}
