@@ -1,0 +1,14 @@
+/* The same block, derived from the token system. Proves the return to green: zero findings here. */
+.promise {
+	color: var(--foreground);
+	background: var(--surface-raised);
+	padding: var(--space-md);
+	margin-bottom: var(--space-lg);
+	border-radius: var(--radius-md);
+	box-shadow: var(--elevation-1);
+	font-family: var(--font-book);
+	font-size: var(--text-lead);
+	font-weight: var(--weight-normal);
+	transition-duration: var(--duration-base);
+	transition-timing-function: var(--ease-paper);
+}

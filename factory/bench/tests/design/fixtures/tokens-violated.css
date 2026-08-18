@@ -1,0 +1,14 @@
+/* Planted violation of gate 1 (tokens compliance). Every line is an expected finding. */
+.promise {
+	color: #7c3aed;
+	background: rgb(34 211 238);
+	padding: 18px;
+	margin-bottom: 2.75rem;
+	border-radius: 12px;
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+	font-family: Inter, sans-serif;
+	font-size: 15px;
+	font-weight: 600;
+	transition-duration: 250ms;
+	transition-timing-function: ease-in-out;
+}

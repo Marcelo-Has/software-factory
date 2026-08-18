@@ -1,0 +1,5 @@
+/* Exception that silences nothing: the residual false positive `reportNeedlessDisables` kills. */
+.promise {
+	/* stylelint-disable-next-line declaration-property-value-disallowed-list -- left over from an old fix */
+	color: var(--foreground);
+}
