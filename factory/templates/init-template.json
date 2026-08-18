@@ -1,0 +1,6 @@
+{
+  "name": "[TO FILL IN — product name]",
+  "language": "[TO FILL IN — language code /init was given for this product, e.g. en, pt-BR — project/** is written in this language; the core stays English regardless, DECISIONS.md D-009 §8]",
+  "owner": "[TO FILL IN — the product owner's name or handle]",
+  "created": "[TO FILL IN — YYYY-MM-DD]"
+}

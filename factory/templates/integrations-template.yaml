@@ -1,0 +1,44 @@
+# integrations-template.yaml — template
+#
+# How to instantiate
+# Copy to project/docs/contracts/integrations.yaml and fill it in as part of D3
+# (/define-architecture), alongside DATA-MODEL.md, contracts/openapi.yaml, and nfr.md. See
+# also factory/docs/playbooks/external-integration.md for the definition emphases and the
+# five mandatory scenario classes every entry here needs covered.
+#
+# The D-3.7 genericity rule (DECISIONS.md D-007): describe the abstract provider KIND (e.g.
+# "payment provider", "email delivery provider", "SMS provider") — never a concrete vendor
+# name, and never a concrete vendor's request/response shape. Concrete provider
+# logic/config/credentials never enter project/docs/ either; they live in the product's own
+# runtime config and secret store, outside this repo's tracked history.
+#
+# Right-sizing (DECISIONS.md D-007, D-3.7): a product with no external integration ships
+# this file with an empty `integrations: []` list — that's a complete, valid D3 artifact,
+# not an unfinished one, and it costs the logical axis nothing further downstream.
+
+integrations:
+  - id: "[TO FILL IN — I-<slug>, e.g. I-payments]"   # stable id, DECISIONS.md D-009 §2.
+                                     # Referenced by behaviors/*.feature's @integration tag
+                                     # and by milestones.yaml.
+    kind: "[TO FILL IN — abstract provider kind, e.g. \"payment provider\" — never a vendor name]"
+    events:                         # inbound events this integration produces, that the
+                                     # product reacts to (names only, provider-agnostic)
+      - "[TO FILL IN — event name]"
+    objects:                        # this product's own domain objects that this
+                                     # integration reads from or writes to
+      - "[TO FILL IN — object name]"
+    webhooks:                       # inbound webhook endpoints this integration calls back
+                                     # into — each operationId must exist in openapi.yaml
+      - operationId: "[TO FILL IN — operationId]"
+        idempotency_key: "[TO FILL IN — the field or header the handler uses to detect a duplicate delivery]"
+    secrets:                        # LOGICAL secret names only — never a value, never a
+                                     # concrete vendor's exact credential field name
+      - "[TO FILL IN — LOGICAL_SECRET_NAME]"
+    sandbox_available: true         # whether this provider kind offers a sandbox/test mode
+                                     # (informational for now; the mock-first functional gate
+                                     # that would use it is built in EVP3, DECISIONS.md D-007)
+    mock_trust_note: >
+      [TO FILL IN — how this integration is exercised without live credentials or network
+      access, the mock-first posture (DECISIONS.md D-007): e.g. "HTTP interception
+      in-process; the webhook is exercised by POSTing a synthetic payload straight at the
+      handler; the @duplicate scenario re-sends the same synthetic event id."]

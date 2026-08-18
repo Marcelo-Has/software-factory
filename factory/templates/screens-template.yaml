@@ -1,0 +1,39 @@
+# screens-template.yaml — template
+#
+# How to instantiate
+# Copy to project/docs/screens.yaml and fill it in as part of D2 (/define-spec), alongside
+# SPEC.md and project/docs/behaviors/*.feature. Schema per DECISIONS.md D-009 §3. This file
+# is the machine-readable screen inventory — SPEC.md §3 narrates it, but this YAML is what
+# gate-definition-done.mjs parses for screens x mockups x milestones coverage.
+#
+# Every screen a product ships gets one entry here, across every area, including screens
+# with no feature pointing at them yet (a marketing page, a transactional email). An area
+# genuinely absent from the product is declared under areas_without_screens below, never
+# just left out.
+
+screens:
+  - id: "[TO FILL IN — S-<slug>, e.g. S-billing]"   # stable screen id. Declared here,
+                                 # referenced everywhere else (SPEC.md, milestones.yaml,
+                                 # mockup filenames). Never renumber or reuse an approved
+                                 # screen's id — retire it explicitly instead.
+    name: "[TO FILL IN — human-readable screen name]"
+    area: "[TO FILL IN — one of: marketing | app | admin | email]"
+    route: "[TO FILL IN — /path, or omit/null if this screen has no route of its own, e.g.
+      a transactional email with area: email]"
+    states:                      # every UI state this screen can be in. Always include
+                                  # "default"; add the others this screen actually needs
+                                  # (loading, empty, error, overflow, offline/degraded — per
+                                  # factory/docs/CRAFT-PRINCIPLES.md's mandatory-states floor,
+                                  # not every state applies to every screen).
+      - default
+    mockup_states:               # the subset of `states` above that requires a mockup file
+                                  # (D5, DECISIONS.md D-009 §4). `default` is always included —
+                                  # a screen with no mockup for its default state is not a
+                                  # complete D5, no matter how many other states it covers.
+      - default
+
+# areas_without_screens: list, explicitly, every area from the `area` enum above
+# (marketing | app | admin | email) that has zero screens in this product. A declared hole
+# is not the same failure as a forgotten one (DECISIONS.md D-009 §3) — an empty list here
+# still has to be present, not omitted, once every area has at least one screen.
+areas_without_screens: []

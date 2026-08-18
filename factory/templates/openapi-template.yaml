@@ -1,0 +1,61 @@
+# openapi-template.yaml — template
+#
+# How to instantiate
+# Copy to project/docs/contracts/openapi.yaml and fill it in as part of D3
+# (/define-architecture), alongside DATA-MODEL.md, contracts/integrations.yaml, and nfr.md.
+# Schema: OpenAPI 3.1, kept minimal — this is a Definition-phase contract for gates and
+# scenario tags to reference, not a full API reference doc. `operationId` is mandatory on
+# every operation (DECISIONS.md D-009 §2: it IS the endpoint's stable id — referenced by
+# behaviors/*.feature's @endpoint tag, nfr.md's authorization matrix, and milestones.yaml).
+# Every route declares `security` explicitly — an empty array (public) is a decision, not a
+# default left unset.
+#
+# Right-sizing (DECISIONS.md D-007): a product with no endpoints of its own still ships a
+# minimal, valid document (an `info` block and an empty `paths: {}`) — that's a complete D3
+# artifact, not an unfinished one.
+
+openapi: 3.1.0
+info:
+  title: "[TO FILL IN — Product name] API"
+  version: 0.1.0
+
+paths:
+  # A regular, authenticated resource route.
+  /<resource>:
+    get:
+      operationId: "[TO FILL IN — operationId, e.g. listInvoices — mandatory, unique, camelCase]"
+      summary: "[TO FILL IN — one-line description]"
+      security:
+        - <securityScheme name>: []       # references a scheme declared under components.securitySchemes below
+      responses:
+        '200':
+          description: "[TO FILL IN — what a successful response returns]"
+
+  # An inbound webhook route — the pattern for any endpoint an external integration calls
+  # back into (declared alongside the matching entry in contracts/integrations.yaml). Named
+  # here in prose only; concrete provider request/response shapes stay out of the core
+  # (DECISIONS.md D-007, the D-3.7 genericity rule).
+  /webhooks/<provider-kind>:
+    post:
+      operationId: "[TO FILL IN — handle<ProviderKind>Webhook, e.g. handlePaymentWebhook]"
+      summary: "[TO FILL IN — what event(s) this endpoint receives, from which integration]"
+      security:
+        - <webhookSecurityScheme name>: []       # signature-verified, not user-authenticated —
+                                                  # record this exception explicitly in nfr.md's
+                                                  # authorization matrix, never as a silent gap
+      responses:
+        '200':
+          description: "[TO FILL IN — acknowledgement; the caller retries on anything else]"
+
+components:
+  securitySchemes:
+    <securityScheme name>:            # the scheme most routes use — adjust to the product's
+                                       # actual auth mechanism (bearer token, session cookie, …)
+      type: http
+      scheme: bearer
+    <webhookSecurityScheme name>:     # a distinct scheme for signature-verified webhook routes —
+                                       # never reuse the user-auth scheme for a caller that isn't
+                                       # a logged-in user
+      type: apiKey
+      in: header
+      name: "[TO FILL IN — signature header name]"

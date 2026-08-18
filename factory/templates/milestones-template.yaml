@@ -1,0 +1,28 @@
+# milestones-template.yaml — template
+#
+# How to instantiate
+# Copy to project/docs/milestones.yaml and fill it in as part of D6 (/plan-milestones), the
+# last stage before gate-definition-done.mjs can go green. Schema per DECISIONS.md D-009 §5.
+# MILESTONES.md (factory/templates/MILESTONES-template.md) is the human narrative behind the
+# same milestones; this YAML is what gate-definition-done.mjs actually parses. Keep them in
+# lockstep — every milestone id here has a matching #### block in MILESTONES.md, and every
+# screen (screens.yaml) and every feature (SPEC.md's #### F-<n> headings) belongs to exactly
+# one milestone below — never zero, never more than one.
+
+milestones:
+  - id: "[TO FILL IN — M-<n>, numbered from M-1 with no gaps]"
+    name: "[TO FILL IN — milestone name]"
+    screens: []                # S-<slug> ids from screens.yaml covered by this milestone
+    features: []                # F-<n> ids from SPEC.md covered by this milestone
+    endpoints: []                # operationIds from contracts/openapi.yaml this milestone
+                                  # delivers or relies on
+    integrations: []              # I-<slug> ids from contracts/integrations.yaml this
+                                   # milestone touches, or [] when none
+    budget:
+      turns: 0                    # [TO FILL IN] explicit turn budget for this milestone (the
+                                   # "explicit turn budget" lesson — a milestone without one
+                                   # is not ready to plan against)
+      usd: 0
+    acceptance:                  # observable condition(s) that close this milestone — short,
+                                  # testable, not prose about intent
+      - "[TO FILL IN — acceptance criterion]"
