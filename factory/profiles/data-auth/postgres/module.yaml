@@ -1,0 +1,38 @@
+# module.yaml — data-auth/postgres
+#
+# Schema: factory/profiles/PROFILES.md §2. Status: skeleton — see this directory's README for
+# what's missing before a product can compose this module.
+
+name: postgres
+dimension: data-auth
+status: skeleton
+
+app_layout:
+  - "[TO FILL IN — see README: this dimension may own migration/schema files under app/api/ (paired with backend/node-service) or a dedicated app/db/ tree; not decided]"
+
+scaffold:
+  - "[TO FILL IN — see README: which migration tool (node-pg-migrate, Prisma, Drizzle, ...) and which auth library this module standardizes on]"
+
+commands:
+  lint: null
+  test: "[TO FILL IN — likely: migration tests against a real or containerized Postgres instance, which is a different testing shape than the hermetic mock-first behaviors contract]"
+  build: null
+  e2e: null
+
+screenshot:
+  method: null
+  preview_adapter: null
+
+deploy:
+  cloud-run: "[TO FILL IN — a managed Postgres instance (the specific provider is out of scope for the core, D-3.7 genericity rule) paired with backend/node-service's deploy/cloud-run target]"
+
+gate_adaptations:
+  generic_gate_note: "[TO FILL IN — confirm gate-contracts.mjs needs no adaptation here]"
+
+behaviors:
+  applicable: false                # this module's own auth-policy behavior coverage, if any,
+                                    # belongs to the paired backend/node-service module (its
+                                    # handlers own the auth checks), not this data-layer module
+  runner: null
+  mapping: null
+  mock: null

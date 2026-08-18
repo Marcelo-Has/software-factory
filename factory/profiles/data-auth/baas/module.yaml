@@ -1,0 +1,40 @@
+# module.yaml — data-auth/baas
+#
+# Schema: factory/profiles/PROFILES.md §2. Status: skeleton — see this directory's README and
+# PROFILES.md §5.1 for what this module is: a derived record, not an independent scaffold.
+
+name: baas
+dimension: data-auth
+status: skeleton
+
+app_layout: []                     # this dimension's module never scaffolds anything of its
+                                    # own — its data store and auth provider are whatever the
+                                    # paired backend/baas-* module already brings
+
+scaffold:
+  - "[TO FILL IN — see README: this module has no scaffold of its own; what it needs is a documented convention for HOW a product's profile.json names which backend/baas-* module this derives from, e.g. a `derives_from` field or a fixed lookup rule]"
+
+commands:
+  lint: null
+  test: null
+  build: null
+  e2e: null
+
+screenshot:
+  method: null
+  preview_adapter: null
+
+deploy:
+  note: "not applicable — deployed as part of the paired backend/baas-* module, see that module's own deploy block"
+
+gate_adaptations:
+  generic_gate_note: "not applicable — this module adapts nothing of its own"
+
+behaviors:
+  applicable: false                # not duplicated here — policy/RLS behavior coverage
+                                    # belongs to the paired backend/baas-* module (see
+                                    # backend/baas-supabase/README.md); this module is a
+                                    # derived record, not a second place to declare it
+  runner: null
+  mapping: null
+  mock: null

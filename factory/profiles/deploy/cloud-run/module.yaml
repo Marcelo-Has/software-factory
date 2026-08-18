@@ -1,0 +1,36 @@
+# module.yaml — deploy/cloud-run
+#
+# Schema: factory/profiles/PROFILES.md §2. Status: skeleton — see this directory's README for
+# what's missing before a product can compose this module.
+
+name: cloud-run
+dimension: deploy
+status: skeleton
+
+app_layout: []                     # a deploy module never owns an app/ subpath
+
+scaffold:
+  - "[TO FILL IN — see README: a Dockerfile convention for backend/node-service (this module's mandatory pair), plus a Cloud Build or GitHub Actions deploy step]"
+
+commands:
+  lint: null
+  test: null
+  build: "[TO FILL IN — likely: docker build, once a Dockerfile convention exists]"
+  e2e: null
+
+screenshot:
+  method: null
+  preview_adapter: "[TO FILL IN — Cloud Run doesn't publish per-PR deploy previews the way Netlify/Vercel do by default; whether this module needs its own preview-URL adapter, or whether deploy previews simply aren't part of this module's contract, is undecided]"
+
+deploy:
+  cloud-run:
+    dockerfile: "[TO FILL IN — the COPY-of-subfolder convention for backend/node-service's app_layout]"
+
+gate_adaptations:
+  preview_url_adapter: "[TO FILL IN — see screenshot.preview_adapter above; no cloudRunAdapter exists in .github/scripts/preview-url.mjs, and it may never need one]"
+
+behaviors:
+  applicable: false
+  runner: null
+  mapping: null
+  mock: null

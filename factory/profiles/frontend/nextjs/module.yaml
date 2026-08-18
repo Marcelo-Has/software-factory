@@ -1,0 +1,40 @@
+# module.yaml — frontend/nextjs
+#
+# Schema: factory/profiles/PROFILES.md §2. Status: skeleton — see this directory's README for
+# what's missing before a product can compose this module.
+
+name: nextjs
+dimension: frontend
+status: skeleton
+
+app_layout:
+  - app/web/                       # the Next.js project root — matches frontend/sveltekit's
+                                    # convention so a product's app/ shape doesn't depend on
+                                    # which frontend module it picked
+
+scaffold:
+  - "[TO FILL IN — see README: the equivalent of `npm create svelte@latest`, plus which Next.js router (app/ vs pages/) this module standardizes on]"
+
+commands:
+  lint: "[TO FILL IN — see README: eslint is the obvious default, but the tokens-compliance gate (frontend/sveltekit's stylelint.config.js equivalent) doesn't exist for this module yet]"
+  test: "[TO FILL IN]"
+  build: "[TO FILL IN — likely: npm run build]"
+  e2e: "[TO FILL IN]"
+
+screenshot:
+  method: "[TO FILL IN — likely playwright, same as frontend/sveltekit, since ui-routes.mjs's route/viewport contract is framework-agnostic]"
+  preview_adapter: "[TO FILL IN — vercel is Next.js's native deploy target, but deploy/vercel is itself a skeleton]"
+
+deploy:
+  vercel: "[TO FILL IN — root dir / build settings, once deploy/vercel matures]"
+  netlify: "[TO FILL IN — Next.js on Netlify needs its own adapter plugin; not evaluated yet]"
+
+gate_adaptations:
+  stylelint_config: "[TO FILL IN — no tokens-compliance config ported for this module; frontend/sveltekit's is the shape to imitate, not the file to reuse (its tokens are that product's own)]"
+  lint_antipatterns_selectors: "[TO FILL IN — .github/scripts/lint-antipatterns.mjs's \"profile extension point\" block is wired to SvelteKit's .svelte extension today; a Next.js selector set (.tsx/.jsx, no framework-specific scroll directive since React has none) has not been written]"
+
+behaviors:
+  applicable: false                # a frontend module never owns an API/webhook handler
+  runner: null
+  mapping: null
+  mock: null

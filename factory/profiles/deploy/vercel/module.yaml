@@ -1,0 +1,36 @@
+# module.yaml — deploy/vercel
+#
+# Schema: factory/profiles/PROFILES.md §2. Status: skeleton — see this directory's README for
+# what's missing before a product can compose this module.
+
+name: vercel
+dimension: deploy
+status: skeleton
+
+app_layout: []                     # a deploy module never owns an app/ subpath
+
+scaffold:
+  - "[TO FILL IN — see README: a vercel.json / project settings convention, paired with frontend/nextjs (itself a skeleton)]"
+
+commands:
+  lint: null
+  test: null
+  build: null
+  e2e: null
+
+screenshot:
+  method: null
+  preview_adapter: vercel          # this module names itself, mirroring deploy/netlify
+
+deploy:
+  vercel:
+    root_directory: "[TO FILL IN — the paired frontend module's app_layout root]"
+
+gate_adaptations:
+  preview_url_adapter: "[TO FILL IN — .github/scripts/preview-url.mjs has only a netlifyAdapter today; a vercelAdapter (its own validate + source-lookup functions, per that script's documented adapter interface) doesn't exist yet]"
+
+behaviors:
+  applicable: false
+  runner: null
+  mapping: null
+  mock: null
