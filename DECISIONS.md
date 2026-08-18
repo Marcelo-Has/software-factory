@@ -191,3 +191,76 @@ separately-numbered decision log is a bug waiting for D-019 (this repo's own, un
 19th decision, whenever it's made) to be misread as the exit-contract guard-rail. A
 disjoint `GR-xx` sequence for guard-rail mechanisms removes the collision permanently,
 independent of how large `DECISIONS.md` grows.
+
+---
+
+## D-007 — The DP-3 axis: logical/integration contracts, symmetric to the visual axis
+
+**Date:** 2026-08-18
+**Status:** accepted
+
+The Definition Phase gets a second axis, DP-3, symmetric to the existing visual/design axis
+(DP-2): where DP-2 defines what a product *looks like*, DP-3 defines what it *does* across a
+boundary — its logical contracts and integrations. Fixed for EVP2 and beyond:
+
+- **Per-product artifacts.** `project/docs/contracts/openapi.yaml` (the API contract),
+  `contracts/integrations.yaml` (third-party integrations), `behaviors/*.feature` (Gherkin
+  scenarios), and `nfr.md` (non-functional requirements).
+- **A deterministic coverage gate**, `gate-contracts.mjs`, modeled on the existing
+  `gate-design-md.mjs` (same shape: a non-AI script that fails the build on missing or
+  incomplete coverage). Not built this session — decided and recorded here so later sessions
+  build to a fixed contract instead of re-deciding it.
+- **A mock-first functional gate**, built in EVP3. This is a **closed decision, not reopened
+  here**: a real sandbox against a live third-party integration stays opt-in per profile,
+  never the default.
+- **Five mandatory scenario classes** whenever a product has an integration: happy path,
+  duplicate/idempotency, external failure, invalid input, and unauthorized. Every integration
+  ships behavior coverage for all five, not just the happy path.
+- **No new AI agents** for this axis (per D-3.5 of the approved `EV-INTEGRATION-ARCH.md`) —
+  DP-3 is served by templates, gates, and skills, the same non-AI-first posture as DP-2.
+- **The D-3.7 genericity rule**: generic integration *concepts* (contract shape, scenario
+  classes, the gate's logic) are allowed in the core; concrete provider logic/config and
+  product identity are never allowed in the core — they live in `project/`/`app/` only.
+
+**Why:** a product's logical/integration surface is exactly as consequential as its visual
+one, and had no equivalent definition-phase treatment before this — features shipped without
+a deterministic check that their contracts, integrations, and failure-mode coverage were
+actually complete, the same gap DP-2's `gate-design-md.mjs` closed for screens. Building it as
+a symmetric second axis, rather than folding it into DP-2, keeps each axis's gate focused and
+keeps the mock-first/real-sandbox boundary (EVP3) from leaking into what's decided now.
+
+---
+
+## D-008 — Replace the static core-write deny with a marker-gated hook (GR-10)
+
+**Date:** 2026-08-18
+**Status:** accepted
+
+`.claude/settings.json` denied `Edit(factory/**)`/`Write(factory/**)` unconditionally, to keep
+the factory core immutable while a product session builds a product. That static deny has no
+way to distinguish "a product session touching the core" from "a factory-evolution session
+touching the core on purpose" (EVP1 S6/S7, and this very session) — both look identical to a
+permission glob. The result was a manual remove-deny -> work -> restore-deny protocol on every
+factory-evolution session, a parked problem since EVP1.
+
+The static deny is replaced with a **marker-gated `PreToolUse` hook**,
+`.claude/hooks/guard-core-writes.mjs` (GR-10, see `factory/docs/FACTORY.md`):
+
+- The two `deny` entries are removed from `settings.json`; nothing else in
+  `permissions`/`hooks` for the existing secret-filter hooks changes.
+- The hook blocks `Edit`/`Write`/`MultiEdit`/`NotebookEdit` (primary guard, keyed on the tool's
+  target path) and, as defense-in-depth, matching `Bash` write commands, against `factory/`,
+  `.claude/`, `.github/`, `CLAUDE.md`, and `DECISIONS.md` — but only while the repo is in
+  **product mode**.
+- Product mode is detected deterministically from the filesystem, not from a settings flag:
+  `project/state/init.json` exists, or `project/` holds any file beyond `README.md`/
+  `.gitkeep`. The second condition closes the "delete the marker" bypass — reopening the core
+  would require deleting the whole product, and the CI gates and PR review still stand outside
+  this hook regardless.
+
+**Why:** a marker-gated hook, rather than a mode flag or a per-repo settings edit, means **one
+identical `settings.json`** ships unmodified everywhere — it never arms in the factory-source
+repo (where `project/` stays empty on `main`), and it arms itself automatically in every
+product repo the moment `/init` writes the marker. There's no manual toggle to remember, no
+per-repo divergence to keep in sync, and no window where a factory-evolution session has to
+choose between working and being unprotected.

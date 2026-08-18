@@ -10,6 +10,11 @@ template repo. `project/` and `app/` are the **only** directories the factory wr
 to when working on a product. Never write product state, code, or history into the
 core directories; never make the core depend on a specific product.
 
+Core immutability is enforced by a marker-gated `PreToolUse` hook (GR-10, see
+`factory/docs/FACTORY.md`), not a static permission deny — it only arms once a real
+product exists under `project/`, so factory-evolution sessions like this one can
+still edit the core freely.
+
 ## Role map
 
 | Directory | Contract |

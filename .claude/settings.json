@@ -20,9 +20,7 @@
       "Read(**/secrets*)",
       "Read(**/serviceAccount*.json)",
       "Read(./.git/**)",
-      "Read(/proc/**)",
-      "Edit(factory/**)",
-      "Write(factory/**)"
+      "Read(/proc/**)"
     ]
   },
   "hooks": {
@@ -37,6 +35,19 @@
           {
             "type": "command",
             "command": "grep -qE '\\bgh\\b[^|;&]*(--body-file|--input|[[:space:]]-F)' && { echo 'Blocked: --body-file/-F/--input in a gh command publishes file content without going through the command secret filter; publish with --body and reviewed text instead' >&2; exit 2; }; exit 0"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/guard-core-writes.mjs"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/guard-core-writes.mjs"
           }
         ]
       }
