@@ -1,0 +1,135 @@
+# openapi.yaml — Ledgerline
+#
+# Example artifact for factory/templates/openapi-template.yaml. See the note in
+# factory/templates/examples/ledgerline/PRODUCT.md — never copy this content into a real
+# product's openapi.yaml. Every operationId here matches the candidate named in
+# ARCHITECTURE.md §4 and nfr.md §1's authorization matrix — this file is what makes those
+# prose mentions a real, gated contract. Kept intentionally thin (no request/response
+# schemas beyond what a Definition-phase contract needs): the point of this example is
+# consistent ids across screens.yaml, behaviors/*.feature, integrations.yaml, and
+# milestones.yaml, not a production-grade API reference.
+
+openapi: 3.1.0
+info:
+  title: Ledgerline API
+  version: 0.1.0
+
+paths:
+  /invoices:
+    get:
+      operationId: listInvoices
+      summary: List every invoice for the current account, filterable by status.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The account's invoices.
+    post:
+      operationId: createInvoice
+      summary: Create a new draft invoice.
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: The created draft invoice.
+
+  /invoices/{id}:
+    get:
+      operationId: getInvoice
+      summary: Get one invoice by id.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The requested invoice.
+    patch:
+      operationId: updateInvoice
+      summary: Edit a draft invoice's fields.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The updated invoice.
+
+  /invoices/{id}/send:
+    post:
+      operationId: sendInvoice
+      summary: Send the invoice by email with a payment link; moves it from draft to sent.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The invoice, now in `sent` status.
+
+  /webhooks/payments:
+    post:
+      operationId: handlePaymentWebhook
+      summary: >
+        The abstract payment provider's confirmation callback (I-payments). Verifies the
+        provider's signature before trusting the payload; treats a repeat delivery of the
+        same event id as a no-op (nfr.md §3).
+      security:
+        - webhookSignature: []
+      responses:
+        '200':
+          description: Acknowledgement — the provider retries on anything else.
+
+  /account:
+    get:
+      operationId: getAccountSettings
+      summary: Get the account's business and settings info.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The account's settings.
+    patch:
+      operationId: updateAccountSettings
+      summary: Update business info; owner only (nfr.md §1).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The updated settings.
+
+  /subscription:
+    get:
+      operationId: getSubscription
+      summary: Get the current plan and, for Pro, the next renewal date.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The account's subscription state.
+
+  /subscription/upgrade:
+    post:
+      operationId: upgradeSubscription
+      summary: Upgrade the account to Pro; owner only (nfr.md §1).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The account's subscription, now on the Pro plan.
+
+  /subscription/cancel:
+    post:
+      operationId: cancelSubscription
+      summary: >
+        Cancel Pro; owner only (nfr.md §1). Pro features stay active until the current
+        billing period ends, per PRODUCT.md/SPEC.md F-5.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The account's subscription, now set to revert to Free at renewal.
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    webhookSignature:
+      type: apiKey
+      in: header
+      name: X-Payment-Provider-Signature

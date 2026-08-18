@@ -1,0 +1,122 @@
+<!--
+  Example artifact for factory/templates/mockup-template.html. See the note in
+  factory/templates/examples/ledgerline/PRODUCT.md — never copy this content into a real
+  product's mockups. This is S-invoices's `empty` state (screens.yaml's mockup_states) —
+  empty-by-absence (no invoice created yet), not empty-by-filter, so the copy and the
+  primary action point straight at creating the first invoice.
+-->
+<!-- screen-id: S-invoices | state: empty -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invoices — Ledgerline (empty)</title>
+<style>
+  :root {
+    --surface: #ffffff;
+    --foreground: #16181d;
+    --accent: #2563eb;
+    --destructive: #dc2626;
+    --success: #16a34a;
+    --warning: #d97706;
+    --border: #e5e7eb;
+    --focus: #2563eb;
+    --spacing-base: 8px;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 16px;
+    --radius-full: 9999px;
+    --type-ratio: 1.25;
+    --motion-duration-base: 150ms;
+    --motion-curve-base: ease-out;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--foreground);
+    font-family: system-ui, sans-serif;
+    font-size: 16px;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: calc(var(--spacing-base) * 3) calc(var(--spacing-base) * 4);
+    border-bottom: 1px solid var(--border);
+  }
+
+  h1 { font-size: 1.5rem; margin: 0; }
+
+  .primary-action {
+    background: var(--accent);
+    color: var(--surface);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: calc(var(--spacing-base) * 1.25) calc(var(--spacing-base) * 2);
+    font-size: 0.9375rem;
+    cursor: pointer;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: calc(var(--spacing-base) * 1.5);
+    max-width: 360px;
+    margin: calc(var(--spacing-base) * 8) auto;
+    padding: 0 calc(var(--spacing-base) * 2);
+  }
+
+  .empty-state__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    background: #eff6ff;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+  }
+
+  .empty-state h2 {
+    font-size: 1.125rem;
+    margin: 0;
+  }
+
+  .empty-state p {
+    margin: 0;
+    color: #4b5563;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Invoices</h1>
+    <button class="primary-action" type="button">New invoice</button>
+  </header>
+
+  <div class="empty-state">
+    <div class="empty-state__icon" aria-hidden="true">$</div>
+    <h2>No invoices yet</h2>
+    <p>
+      Create your first invoice to start tracking who owes you money — it takes about five
+      minutes from job done to invoice sent.
+    </p>
+    <button class="primary-action" type="button">Create your first invoice</button>
+  </div>
+</body>
+</html>

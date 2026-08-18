@@ -1,0 +1,66 @@
+# screens.yaml — Ledgerline
+#
+# Example artifact for factory/templates/screens-template.yaml. See the note in
+# factory/templates/examples/ledgerline/PRODUCT.md — never copy this content into a real
+# product's screens.yaml. Screen ids here are the same stable ids SPEC.md §1 and §3
+# reference, and the ones milestones.yaml and the mockup filenames below cross-link against.
+
+screens:
+  - id: S-invoices
+    name: Invoice list
+    area: app
+    route: /invoices
+    states:
+      - default
+      - loading
+      - empty
+      - error
+    mockup_states:
+      - default
+      - empty
+
+  - id: S-invoice-editor
+    name: Invoice editor
+    area: app
+    route: /invoices/:id/edit
+    states:
+      - default
+      - loading
+      - error
+    mockup_states:
+      - default
+
+  - id: S-settings
+    name: Account and business settings
+    area: app
+    route: /settings
+    states:
+      - default
+      - loading
+      - error
+    mockup_states:
+      - default
+
+  - id: S-billing
+    name: Subscription and billing
+    area: app
+    route: /billing
+    states:
+      - default
+      - loading
+      - error
+    mockup_states:
+      - default
+
+  - id: S-email-invoice-sent
+    name: "Invoice sent — transactional email"
+    area: email
+    route: null
+    states:
+      - default
+    mockup_states:
+      - default
+
+# No marketing or admin screens in this v1 (SPEC.md §3) — declared explicitly rather than by
+# omission (DECISIONS.md D-009 §3).
+areas_without_screens: [marketing, admin]

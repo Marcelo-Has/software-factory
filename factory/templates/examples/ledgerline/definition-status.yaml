@@ -1,0 +1,90 @@
+# definition-status.yaml — Ledgerline
+#
+# Example artifact for factory/templates/definition-status-template.yaml. See the note in
+# factory/templates/examples/ledgerline/PRODUCT.md — never copy this content into a real
+# product's definition-status.yaml. Filled to `approved` for every stage, illustrating what a
+# fully owner-approved Definition Phase looks like in this schema.
+#
+# Honesty note (kept here rather than silently dropped): this example intentionally stops
+# short of full mechanical coverage — D4's DESIGN.md/tokens.css/DESIGN-DIGEST.md were never
+# built for it (out of this session's scope; the two mockups below use an illustrative inline
+# token block instead of values copied from a real tokens.css), and D5 carries mockups for
+# only one of the five screens (S-invoices, both its `default` and `empty` states). A status
+# of `approved` here reflects the owner's sign-off on this artifact-example's intentionally
+# small scope, not 100% mechanical coverage — gate-definition-done.mjs (EVP2 S4) checks
+# coverage independently of this file's status fields, and is expected to report the
+# remaining mockups as pending against this same example.
+
+stages:
+  D0:
+    status: approved
+    approved_by: Ledgerline's owner
+    date: 2026-08-18
+    waivers: []
+    decided:
+      - Product name and initial owner confirmed at kickoff.
+    assumed: []
+  D1:
+    status: approved
+    approved_by: Ledgerline's owner
+    date: 2026-08-18
+    waivers: []
+    decided:
+      - "Personality (Precise, Reassuring, Unfussy) and brand positioning confirmed with the owner (PRODUCT.md §6)."
+    assumed:
+      - A 5-invoice/month Free cap is the right Free/Pro line (PRODUCT.md §7).
+  D2:
+    status: approved
+    approved_by: Ledgerline's owner
+    date: 2026-08-18
+    waivers: []
+    decided:
+      - Feature set F-1 through F-5 confirmed with the owner (SPEC.md §1).
+    assumed:
+      - Offline "mark as paid" stays available alongside online payment (SPEC.md §4).
+  D3:
+    status: approved
+    approved_by: Ledgerline's owner
+    date: 2026-08-18
+    waivers: []
+    decided:
+      - "Stack: frontend/sveltekit + backend/baas-supabase + deploy/netlify — factory recommendation accepted without override (ARCHITECTURE.md §2)."
+    assumed:
+      - A single BaaS provider can carry both the relational data and auth needs of v1 (ARCHITECTURE.md §6).
+  D4:
+    status: approved
+    approved_by: Ledgerline's owner
+    date: 2026-08-18
+    waivers:
+      - item: DESIGN.md / tokens.css / DESIGN-DIGEST.md
+        justification: >
+          Out of scope for this Definition-phase machine-readable/contract example (EVP2
+          S2-S3) — the two mockups this example does carry use an illustrative inline token
+          block instead of values copied from a real, approved tokens.css.
+        approved_by: Ledgerline's owner
+        date: 2026-08-18
+    decided: []
+    assumed: []
+  D5:
+    status: approved
+    approved_by: Ledgerline's owner
+    date: 2026-08-18
+    waivers:
+      - item: "Mockups for S-invoice-editor, S-settings, S-billing, S-email-invoice-sent (default state)"
+        justification: >
+          This example illustrates the mockup filename contract with one screen's two states
+          (S-invoices.html, S-invoices--empty.html) rather than full inventory coverage —
+          kept small per this session's scope.
+        approved_by: Ledgerline's owner
+        date: 2026-08-18
+    decided: []
+    assumed: []
+  D6:
+    status: approved
+    approved_by: Ledgerline's owner
+    date: 2026-08-18
+    waivers: []
+    decided:
+      - Milestone sequencing M-1 -> M-2 -> M-3 confirmed with the owner (MILESTONES.md §3).
+    assumed:
+      - The budgets are plausible placeholders, not measured estimates (MILESTONES.md §4).

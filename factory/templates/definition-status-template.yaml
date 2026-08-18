@@ -1,0 +1,70 @@
+# definition-status-template.yaml — template
+#
+# How to instantiate
+# /init creates this file at project/state/definition-status.yaml (D0) — every later
+# Definition skill reads and updates it, and gate-definition-done.mjs reports against it.
+# Schema per DECISIONS.md D-009 §6. No skill ever writes `status: approved` on its own
+# artifact — approval is the owner's act; the skill records the owner's spoken approval here,
+# with a date.
+#
+# Per stage (D0-D6):
+#   status         one of: pending | in-progress | awaiting-approval | approved | waived
+#   approved_by    who approved it (null while not approved)
+#   date           the date of the current status, YYYY-MM-DD (null while pending)
+#   waivers        list of { item, justification, approved_by, date } — an explicitly
+#                  dispensed requirement, never a silently skipped one
+#   decided        choices made and confirmed WITH the owner at this stage (the
+#                  refinement-flow tradition, carried into the Definition Phase)
+#   assumed        choices made WITHOUT asking, carried forward as an open assumption — each
+#                  one should also appear in the stage artifact's own "Open assumptions" table
+
+stages:
+  D0:
+    status: pending
+    approved_by: null
+    date: null
+    waivers: []
+    decided: []
+    assumed: []
+  D1:
+    status: pending
+    approved_by: null
+    date: null
+    waivers: []
+    decided: []
+    assumed: []
+  D2:
+    status: pending
+    approved_by: null
+    date: null
+    waivers: []
+    decided: []
+    assumed: []
+  D3:
+    status: pending
+    approved_by: null
+    date: null
+    waivers: []
+    decided: []
+    assumed: []
+  D4:
+    status: pending
+    approved_by: null
+    date: null
+    waivers: []
+    decided: []
+    assumed: []
+  D5:
+    status: pending
+    approved_by: null
+    date: null
+    waivers: []
+    decided: []
+    assumed: []
+  D6:
+    status: pending
+    approved_by: null
+    date: null
+    waivers: []
+    decided: []
+    assumed: []

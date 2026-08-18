@@ -1,0 +1,33 @@
+# integrations.yaml — Ledgerline
+#
+# Example artifact for factory/templates/integrations-template.yaml. See the note in
+# factory/templates/examples/ledgerline/PRODUCT.md — never copy this content into a real
+# product's integrations.yaml. One abstract payment provider, used both for per-invoice
+# payment links (F-3) and Pro subscription billing (F-5) — see ARCHITECTURE.md §1/§4 and
+# nfr.md §3. Per the D-3.7 genericity rule, this stays an abstract provider kind: no vendor
+# name or vendor-specific request/response shape, here or anywhere else in this example.
+
+integrations:
+  - id: I-payments
+    kind: payment provider
+    events:
+      - payment.succeeded
+      - subscription.updated
+      - subscription.canceled
+    objects:
+      - Invoice
+      - Subscription
+    webhooks:
+      - operationId: handlePaymentWebhook
+        idempotency_key: external_event_id
+    secrets:
+      - PAYMENT_PROVIDER_API_KEY
+      - PAYMENT_PROVIDER_WEBHOOK_SIGNING_SECRET
+    sandbox_available: true
+    mock_trust_note: >
+      Exercised hermetically, no live credentials or network: HTTP interception in-process
+      for outbound calls (creating a payment link, reading subscription state); the webhook
+      is exercised by POSTing a synthetic payload straight at handlePaymentWebhook; the
+      @duplicate scenario re-sends the same synthetic external_event_id and asserts no
+      second state change. A real sandbox smoke test against this provider kind stays
+      opt-in per profile (DECISIONS.md D-007) — not exercised by this example.

@@ -1,0 +1,56 @@
+# milestones.yaml — Ledgerline
+#
+# Example artifact for factory/templates/milestones-template.yaml. See the note in
+# factory/templates/examples/ledgerline/PRODUCT.md — never copy this content into a real
+# product's milestones.yaml. This is the machine source behind MILESTONES.md — same ids,
+# same groupings, same budgets; MILESTONES.md carries the narrative and the sequencing
+# rationale, this file is what gate-definition-done.mjs parses. Every screen (screens.yaml)
+# and every feature (SPEC.md) appears in exactly one milestone below.
+
+milestones:
+  - id: M-1
+    name: Core invoicing
+    screens: [S-invoices, S-invoice-editor]
+    features: [F-1, F-2]
+    endpoints: [listInvoices, createInvoice, getInvoice, updateInvoice]
+    integrations: []
+    budget:
+      turns: 40
+      usd: 25
+    acceptance:
+      - An account owner can create a draft invoice with line items.
+      - The invoice appears in the invoice list with a computed total.
+      - The invoice can be edited while it stays `draft`.
+
+  - id: M-2
+    name: Send and get paid
+    screens: [S-email-invoice-sent]
+    features: [F-3]
+    endpoints: [sendInvoice, handlePaymentWebhook]
+    integrations: [I-payments]
+    budget:
+      turns: 30
+      usd: 20
+    acceptance:
+      - Sending an invoice delivers the transactional email with a working payment link.
+      - A successful payment moves the invoice to `paid` from the provider's webhook.
+      - A duplicate delivery of the same webhook event is confirmed as a no-op.
+
+  - id: M-3
+    name: Account, settings, and Pro
+    screens: [S-settings, S-billing]
+    features: [F-4, F-5]
+    endpoints:
+      - getAccountSettings
+      - updateAccountSettings
+      - getSubscription
+      - upgradeSubscription
+      - cancelSubscription
+    integrations: [I-payments]
+    budget:
+      turns: 25
+      usd: 15
+    acceptance:
+      - An account owner can update business info that appears on new invoices.
+      - Upgrading to Pro immediately lifts the Free-tier cap.
+      - Canceling Pro reverts to Free at the next renewal date, not immediately.
