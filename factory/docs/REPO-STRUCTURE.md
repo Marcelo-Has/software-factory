@@ -51,8 +51,14 @@ See [`.claude/README.md`](../../.claude/README.md) for the full contract.
 - **`.claude/skills/`** — one directory per skill, each holding a `SKILL.md`:
   `answer-decision`, `design-foundation`, `fix-ci`, `harden-workflows`, `new-issue`,
   `pause`, `resume`, `triage-pr`.
+- **`.claude/hooks/`** — `PreToolUse` hook scripts registered in `settings.json`:
+  `guard-core-writes.mjs` (GR-10 — see `factory/docs/FACTORY.md`), the marker-gated
+  guard that keeps `factory/`, `.claude/`, `.github/`, `CLAUDE.md`, and `DECISIONS.md`
+  immutable during a product session, without blocking factory-evolution sessions.
 - **`.claude/settings.json`** — `PreToolUse` hooks and permission paths (`app/**` /
-  `project/**` allow; `factory/**` deny for product sessions).
+  `project/**` allow). Core immutability is enforced by the `guard-core-writes.mjs`
+  hook (GR-10), not a static `deny`, so this file is identical across the
+  factory-source repo and every product repo.
 
 ### `.github/` — deterministic CI/CD
 
