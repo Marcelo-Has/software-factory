@@ -216,6 +216,12 @@ jobs:
             review/security -> verdict -> human merge. The coordination below exists only
             WITHIN this node.
 
+            F1 — BEFORE ANYTHING ELSE: does this issue contain verifiable acceptance criteria?
+            "Verifiable" means someone could fail the PR with the criterion in hand — "works
+            well" or "is responsive" fails nothing, so it isn't a criterion. If it doesn't have
+            one, this is outcome (b) below (decision-needed) — a vague spec is never a license
+            for general improvements. Report it as blocked rather than guessing at scope.
+
             Dependencies are ALREADY installed on this runner (`npm ci` already ran): don't
             run `npm ci` again. Run `npm run lint` and `npm test`. Do NOT run
             `npm run test:e2e` (downloads a large browser) or any test suite requiring a JVM
