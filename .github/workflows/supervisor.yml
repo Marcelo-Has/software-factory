@@ -1,0 +1,80 @@
+name: Supervisor
+# The factory's Generation-regime heart: scheduled, reads the roadmap, picks tasks, opens
+# issues.
+#
+# PORTED DISABLED. This repo starts with no product and no roadmap phase to drive, so the
+# schedule below is commented out rather than left live against an empty `project/docs/
+# ROADMAP.md`. RE-ENABLING: uncomment the `schedule:` block under `on:` (see `.claude/skills/
+# resume/` for the accompanying skill), or dispatch it manually with `workflow_dispatch` in the
+# meantime — that trigger stays live.
+on:
+  # schedule:
+  #   - cron: "0 11 * * 1-5"   # weekdays only; adjust to the project's own cadence
+  workflow_dispatch: {}     # allows a manual run from the GitHub button
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+  id-token: write
+  actions: write
+
+jobs:
+  supervisor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        with:
+          # Auth-mode toggle via the repo variable FACTORY_AUTH: unset (or "api") uses the
+          # metered ANTHROPIC_API_KEY secret; "oauth" uses the CLAUDE_CODE_OAUTH_TOKEN
+          # subscription credential. The unused credential resolves to an empty string, which
+          # the action treats as absent.
+          anthropic_api_key: ${{ vars.FACTORY_AUTH != 'oauth' && secrets.ANTHROPIC_API_KEY || '' }}
+          claude_code_oauth_token: ${{ vars.FACTORY_AUTH == 'oauth' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          allowed_bots: "claude"
+          prompt: |
+            You are the Supervisor (see .claude/agents/supervisor.md).
+            Read project/docs/PRODUCT.md, factory/docs/FACTORY.md, factory/docs/AUTONOMY.md,
+            project/docs/ROADMAP.md, and DECISIONS.md.
+            Check open issues, dependencies, PRs, CI results, and pending decisions. Select the
+            next UNBLOCKED tasks the current phase needs and create clear issues labeled
+            `status:ready`.
+            Don't change existing product decisions. If a task needs a human decision, create an
+            issue labeled `decision-needed` (Options + Recommendation + what's blocking) and
+            continue with other tasks.
+            When creating issues, follow `.github/ISSUE_TEMPLATE/factory-task.md` — verifiable
+            acceptance criteria, explicit out-of-scope, likely files, and dependencies. If the
+            task touches a PENDING decision recorded in DECISIONS.md, create it as
+            decision-needed, not status:ready.
+
+            SIZE — the test is whether the developer-lead fits in 40 turns. One issue = one
+            concern, one deliverable, a limited surface (one module or a handful of files).
+            Practical test: if you can't describe the change concretely in a few sentences, it's
+            too big — DECOMPOSE it into ordered issues, each completable and verifiable on its
+            own, with "Blocked by #N" in Dependencies. Never a mega-issue. In "Scope", write the
+            line `**Estimated size:** S | M | L` with one sentence of justification (L = you
+            couldn't decompose it further — say why). A mega-issue doesn't die here: it dies
+            three sessions later, in `needs-human`, with the cost already spent.
+
+            ROADMAP: if the task doesn't exist as a line in `project/docs/ROADMAP.md` — because
+            you decomposed an item (F1-05 -> F1-05a/b/c — ONE declared line per sub-issue) or
+            because it's product work the plan didn't foresee — the issue HAS to carry, in
+            "Scope", the exact line to add to the file: code, phase, and position. You are
+            read-only and don't write the file; the developer-lead writes it, in the PR that
+            closes the issue. Without that declared line, the item is invisible to the next
+            Supervisor run. A factory follow-up issue does NOT become a ROADMAP line.
+
+            BUDGET AND TOOLS: you have 30 turns and ONLY Read, Glob, Grep, TodoWrite, and Bash
+            with `ls`, `git log`, `git status`, `gh issue`, `gh pr view`, and `gh pr list`. There
+            is no `cat`, `grep`, `head`, `tail`, or `find` — use the `Read`/`Grep`/`Glob` tools
+            instead; every attempt at what doesn't exist is a wasted turn.
+          # `cat`/`grep`/`head`/`tail`/`wc`/`find` are excluded from the allow-list:
+          # `Read`/`Grep`/`Glob` cover the same reading and respect the `deny` list in
+          # `.claude/settings.json`, which none of them do — and `find -exec` is arbitrary
+          # command execution. The cut matters more here than elsewhere: this workflow has no
+          # generic `node`/`npx`/`git` need, so removing the readers narrows the path rather than
+          # just trimming it.
+          # `Bash(gh issue:*)` stays: creating issues IS the Supervisor's job, not "reporting" on
+          # someone else's work.
+          claude_args: '--max-turns 30 --model claude-sonnet-5 --allowed-tools "Read,Glob,Grep,TodoWrite,Bash(ls:*),Bash(git log:*),Bash(git status:*),Bash(gh issue:*),Bash(gh pr view:*),Bash(gh pr list:*)"'

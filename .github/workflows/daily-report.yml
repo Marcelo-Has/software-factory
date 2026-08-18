@@ -1,0 +1,396 @@
+name: Daily Report
+# A daily summary of progress, opened as an issue to track.
+on:
+  schedule:
+    - cron: "0 11 * * *"   # 11:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+  # `write`: the re-entry backstop below needs to apply `needs-human` and comment on a PR when
+  # the attempt ceiling is exhausted. The agent still doesn't get these tools — a non-AI step
+  # writes them, with the job's `GITHUB_TOKEN`.
+  pull-requests: write
+  id-token: write
+  actions: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      # This step is NON-AI and runs BEFORE the agent, deliberately — both details are the
+      # decision, not chance.
+      #
+      # Non-AI because an alarm built by an agent gets silenced by the very failure it exists to
+      # report: a Verdict run stuck at its turn ceiling never publishes a verdict, an incomplete
+      # PR's label never flips, and since `review.yml`/`security.yml` are gated by that same
+      # label (D-019) the PR never gets reviewed either — the same kind of failure would silence
+      # an agent-based alarm too. Before the agent because the survey needs to exist even if the
+      # agent dies on the very next turn — the publish step below opens the issue with it either
+      # way.
+      #
+      # `gh` here runs in the runner's shell with the job's `GITHUB_TOKEN`, not through the
+      # agent: no agent allow-list is widened by this step.
+      - name: Survey signs of a stalled factory (non-AI step)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SIGNALS: ${{ runner.temp }}/signals.md
+          # Hours without activity after which a `delivery:incomplete` PR counts as stalled.
+          # 6h: more than a normal implementation round, less than half a day of silence.
+          STALL_HOURS: "6"
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d "${STALL_HOURS} hours ago" +%Y-%m-%dT%H:%M:%SZ)
+          since=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+
+          # `statusCheckRollup` is what lets us distinguish "the lead said it's done" from "CI
+          # agrees". See the `ci:red` step below.
+          gh pr list --state open --limit 50 \
+            --json number,title,url,updatedAt,labels,statusCheckRollup > "${RUNNER_TEMP}/prs.json"
+          jq -r --arg cutoff "$cutoff" '
+            .[]
+            | select(any(.labels[]; .name == "delivery:incomplete"))
+            | select(.updatedAt < $cutoff)
+            | "- #\(.number) \(.title) — no activity since \(.updatedAt) — \(.url)"
+          ' "${RUNNER_TEMP}/prs.json" > "${RUNNER_TEMP}/prs-stalled.txt"
+
+          # No `--status failure` on purpose: we need ALL runs to know whether the red still
+          # holds. Filtering by failure directly produces a noisy list on any active repo, most
+          # of it already superseded by a later push that passed — and an alarm that shouts every
+          # day is an alarm nobody reads. Grouping by workflow+branch and keeping only the MOST
+          # RECENT run of each group leaves only what's still red right now.
+          gh run list --limit 100 --created ">${since}" \
+            --json workflowName,headBranch,conclusion,createdAt,displayTitle,url \
+            > "${RUNNER_TEMP}/runs.json"
+          jq -r '
+            [ .[]
+              | select(.workflowName
+                       | test("Verdict|Review|Security|Implement|Supervisor|Fix|Daily Report")) ]
+            | group_by(.workflowName + "@" + .headBranch)
+            | map(max_by(.createdAt))
+            | .[]
+            | select(.conclusion == "failure")
+            | "- **\(.workflowName)** on `\(.headBranch)` — \(.displayTitle) (\(.createdAt)) — \(.url)"
+          ' "${RUNNER_TEMP}/runs.json" > "${RUNNER_TEMP}/runs-red.txt"
+
+          # Derived from the ROADMAP. `project/docs/ROADMAP.md` is what the Supervisor reads to
+          # pick the next frontier; when it falls behind, the factory plans against a wrong map —
+          # and the symptom is silent, because no check goes red over it.
+          #
+          # This is a SIGNAL, not a gate: failing a code PR's `ci` over a doc-marking miss would
+          # be disproportionate (`.claude/rules/right-sizing.md`). The developer-lead marks it, in
+          # the PR that closes the issue; this step only reports what slipped through.
+          #
+          # Known, accepted false positive: an issue closed as a duplicate or superseded shows up
+          # here as drift too. One extra report line is cheap next to missing real drift, and it
+          # disappears as soon as the item's line gets marked.
+          gh issue list --state closed --limit 200 --json number,title,url \
+            > "${RUNNER_TEMP}/issues-closed.json"
+          # `[a-z0-9]*` at the end because the factory decomposes an item into a letter+number
+          # suffix (F1-05a, F1-05a2, F1-08b). `FU-xx` doesn't match on purpose: a factory
+          # follow-up has no ROADMAP line.
+          jq -r '
+            .[]
+            | select(.title | test("\\[F[0-9]+-[0-9]+[a-z0-9]*\\]"))
+            | "\(.title | capture("\\[(?<c>F[0-9]+-[0-9]+[a-z0-9]*)\\]").c)\t#\(.number)\t\(.url)"
+          ' "${RUNNER_TEMP}/issues-closed.json" \
+            | sort -u | awk -F'\t' '!seen[$1]++' > "${RUNNER_TEMP}/closed-codes.tsv"
+
+          : > "${RUNNER_TEMP}/roadmap-drift.txt"
+          while IFS=$'\t' read -r code num url; do
+            [ -n "$code" ] || continue
+            if ! grep -q -- "\*\*${code}\*\*" project/docs/ROADMAP.md; then
+              echo "- \`${code}\` (${num}) — issue closed and the code **does not exist** in the ROADMAP — ${url}"
+            elif ! grep -qE -- "^ *- \[x\] \*\*${code}\*\*" project/docs/ROADMAP.md; then
+              echo "- \`${code}\` (${num}) — issue closed and the ROADMAP line is still \`[ ]\` — ${url}"
+            fi
+          done < "${RUNNER_TEMP}/closed-codes.tsv" >> "${RUNNER_TEMP}/roadmap-drift.txt"
+
+          : > "$SIGNALS"
+          if [ -s "${RUNNER_TEMP}/prs-stalled.txt" ] || [ -s "${RUNNER_TEMP}/runs-red.txt" ]; then
+            {
+              echo "## ⚠️ Signs of a stalled factory"
+              echo
+              if [ -s "${RUNNER_TEMP}/prs-stalled.txt" ]; then
+                echo "**PRs stalled at \`delivery:incomplete\` for more than ${STALL_HOURS}h.**"
+                echo "Without a verdict the label never becomes \`delivery:complete\`, and the PR"
+                echo "disappears from the flow without leaving the list:"
+                echo
+                cat "${RUNNER_TEMP}/prs-stalled.txt"
+                echo
+              fi
+              if [ -s "${RUNNER_TEMP}/runs-red.txt" ]; then
+                echo "**Agent runs still red** (the most recent per workflow+branch in the last 24h):"
+                echo
+                cat "${RUNNER_TEMP}/runs-red.txt"
+                echo
+                echo "> \`Review\`/\`Security\` red on a PR labeled \`merge-manual\` is the"
+                echo "> workflow-self-modification impasse (the AI action refuses to run on a PR"
+                echo "> that changes the workflow invoking it), not an agent failure."
+                echo
+              fi
+            } > "$SIGNALS"
+            echo "::warning::There are signs of a stalled factory — see today's report issue."
+          else
+            echo "No stalled PR and no red agent run in the last 24h."
+          fi
+
+          # Its own section, appended: ROADMAP drift isn't "a stalled factory" (the factory can be
+          # producing fine and still let the map fall behind). Mixing the two under one heading
+          # would make a reader discount one for the other.
+          if [ -s "${RUNNER_TEMP}/roadmap-drift.txt" ]; then
+            {
+              echo "## 🗺️ ROADMAP out of sync"
+              echo
+              echo "Closed issues whose \`project/docs/ROADMAP.md\` item didn't keep up. The"
+              echo "developer-lead marks it, in the PR that closes the issue — what's below slipped:"
+              echo
+              cat "${RUNNER_TEMP}/roadmap-drift.txt"
+              echo
+              echo "> An issue closed as a duplicate or superseded also shows up on this list."
+              echo
+            } >> "$SIGNALS"
+            echo "::warning::ROADMAP out of sync — see today's report issue."
+          else
+            echo "ROADMAP in sync with closed issues."
+          fi
+
+      # RE-ENTRY BACKSTOP. The primary actuator lives at the end of `implement.yml`: the instant
+      # a session fails, it already knows the PR exists and is incomplete, and re-dispatches
+      # right there. This step exists for when that one does NOT run — a cancelled job, a dead
+      # runner, a lost dispatch. Without it, those windows would stay the dead end the earlier
+      # "signs of a stalled factory" survey could only report on.
+      #
+      # Non-AI and before the agent, same reasoning as above: an actuator built by an agent gets
+      # silenced by the same failure it's meant to fix. No agent allow-list is widened — `gh`
+      # runs in the runner's shell with the job's `GITHUB_TOKEN`.
+      #
+      # The attempt count is maintained by `implement.yml`, which labels `reentry:N` at the end
+      # of every session. Here we only READ that ceiling — labeling here too would double-count
+      # the same session.
+      #
+      # `delivery:complete` does NOT mean CI is green, and that's BY DESIGN.
+      #
+      # `implement.yml`'s contract tells the developer-lead to run `lint` and `test` and
+      # FORBIDS a heavier e2e suite, which only runs in CI afterward. So the label is a
+      # statement about what the lead VERIFIED, not about the PR's actual state — and the two can
+      # legitimately diverge. But if the guard-rail and this sweep decided re-entry by looking at
+      # the label alone, a PR could close as "complete", go red, and nothing would put it back in
+      # the queue.
+      #
+      # The fix is ADDITIVE, on purpose: instead of changing what `delivery:complete` means in
+      # the middle of the lead's contract (the most delicate part of `implement.yml`), a second
+      # label carries what only CI knows. The lead keeps marking what it always marked.
+      - name: Flag PRs with red CI (non-AI step)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          gh label create 'ci:red' --color 'B60205' --force \
+            --description 'Delivery marked complete, but CI failed' >/dev/null
+
+          # Only a PR marked `delivery:complete`: on `delivery:incomplete` the sweep below already
+          # acts, and flagging both wouldn't add anything.
+          #
+          # `FAILURE`/`TIMED_OUT`/`STARTUP_FAILURE` count as red. `CANCELLED` does NOT: a check
+          # cancelled by concurrency is frequent noise on workflows without a `concurrency` group
+          # by design (`design-critic`, `screenshots`), and re-dispatching the factory over it
+          # would spend an AI session fixing what never broke.
+          jq -r '
+            .[]
+            | select(any(.labels[]; .name == "delivery:complete"))
+            | { n: .number,
+                red: ([.statusCheckRollup[]?
+                            | select(.conclusion == "FAILURE" or .conclusion == "TIMED_OUT"
+                                     or .conclusion == "STARTUP_FAILURE")] | length > 0),
+                flagged: (any(.labels[]; .name == "ci:red")) }
+            | "\(.n)\t\(.red)\t\(.flagged)"
+          ' "${RUNNER_TEMP}/prs.json" > "${RUNNER_TEMP}/ci-state.tsv"
+
+          while IFS=$'\t' read -r pr red flagged; do
+            [ -n "${pr:-}" ] || continue
+            if [ "${red}" = 'true' ] && [ "${flagged}" = 'false' ]; then
+              gh pr edit "${pr}" --add-label 'ci:red' >/dev/null
+              echo "PR #${pr}: delivery:complete with red CI — flagged \`ci:red\`."
+            elif [ "${red}" = 'false' ] && [ "${flagged}" = 'true' ]; then
+              # Removing the label once CI turns green is what keeps a fixed PR from staying stuck
+              # in the queue — without this the fix would create a new dead end in place of the old one.
+              gh pr edit "${pr}" --remove-label 'ci:red' >/dev/null
+              echo "PR #${pr}: CI is green again — \`ci:red\` removed."
+            fi
+          done < "${RUNNER_TEMP}/ci-state.tsv"
+
+      - name: Re-entry on a stalled PR (non-AI step)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SIGNALS: ${{ runner.temp }}/signals.md
+          STALL_HOURS: "6"
+          MAX_ATTEMPTS: "3"
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d "${STALL_HOURS} hours ago" +%Y-%m-%dT%H:%M:%SZ)
+          : > "${RUNNER_TEMP}/redispatches.txt"
+
+          # `prs.json` came from the earlier step. A PR only enters here if it's open, stalled
+          # beyond the window, without `needs-human`, and without `[BLOCKED]` in the title — the
+          # latter is a Decision Gate waiting on a human ON PURPOSE, and re-dispatching would
+          # undo that.
+          #
+          # And it enters for ONE of two reasons:
+          #   a) `delivery:incomplete` — the lead didn't finish (the original case);
+          #   b) `delivery:complete` BUT CI failed — the lead finished what it could verify, and
+          #      what it's FORBIDDEN to run failed afterward. Without this the PR closes as
+          #      "complete", goes red, and nothing puts it back in the queue.
+          #
+          # Red is read from `statusCheckRollup`, not from the `ci:red` label the previous step
+          # applies: `prs.json` was built BEFORE that step, so depending on the label would create
+          # an ordering dependency that would only fail on the first day. The label is the
+          # auditable trail on the board; the decision comes from the rollup.
+          #
+          # `CANCELLED` is excluded, same reason as the previous step: frequent concurrency noise
+          # on this factory's ungated workflows, and re-dispatching would spend an AI session
+          # fixing what never broke.
+          jq -r --arg cutoff "$cutoff" '
+            def failed:
+              [.statusCheckRollup[]?
+               | select(.conclusion == "FAILURE" or .conclusion == "TIMED_OUT"
+                        or .conclusion == "STARTUP_FAILURE")] | length > 0;
+            .[]
+            | select(any(.labels[]; .name == "delivery:incomplete")
+                     or (any(.labels[]; .name == "delivery:complete") and failed))
+            | select(any(.labels[]; .name == "needs-human") | not)
+            | select(.updatedAt < $cutoff)
+            | select(.title | startswith("[BLOCKED]") | not)
+            | "\(.number)\t\([.labels[].name | select(test("^reentry:[0-9]+$")) | ltrimstr("reentry:") | tonumber] | max // 0)"
+          ' "${RUNNER_TEMP}/prs.json" > "${RUNNER_TEMP}/candidates.tsv"
+
+          while IFS=$'\t' read -r pr spent; do
+            [ -n "${pr:-}" ] || continue
+
+            if [ "${spent}" -ge "${MAX_ATTEMPTS}" ]; then
+              gh label create 'needs-human' --color 'B60205' --force \
+                --description 'Re-entry ceiling exhausted: the factory stopped and will not try again' >/dev/null
+              gh pr edit "${pr}" --add-label 'needs-human' >/dev/null
+              gh pr comment "${pr}" --body "$(printf '%s\n' \
+                "🛑 **Re-entry ceiling exhausted** (${spent}/${MAX_ATTEMPTS}). The factory won't try again on its own." \
+                '' \
+                'Stopping is a valid outcome; disappearing is not. After unblocking it by hand, remove' \
+                'the `needs-human` label and re-dispatch `implement.yml` with this PR'"'"'s issue.')"
+              echo "- #${pr} — ${MAX_ATTEMPTS}-attempt ceiling exhausted, flagged \`needs-human\`" \
+                >> "${RUNNER_TEMP}/redispatches.txt"
+              continue
+            fi
+
+            # The issue comes from the CLOSING KEYWORD in the body, never a bare `#N` — same regex
+            # as `implement.yml`'s guard-rail, for the same false-positive reason.
+            issue=$(gh pr view "${pr}" --json body \
+              | jq -r '(.body // "")
+                  | capture("(?<kw>clos(e|es|ed)|fix(es|ed)?|resolv(e|es|ed))[[:space:]]+#(?<n>[0-9]+)"; "i")
+                  | .n // empty')
+
+            if [ -z "${issue:-}" ]; then
+              echo "- #${pr} — stalled, but no closing keyword in the body: can't tell the issue" \
+                >> "${RUNNER_TEMP}/redispatches.txt"
+              continue
+            fi
+
+            gh workflow run implement.yml -f issue="${issue}"
+            gh pr comment "${pr}" --body "$(printf '%s\n' \
+              "▶️ **Automatic re-entry**: this PR is \`delivery:incomplete\` and has had no activity" \
+              "for more than ${STALL_HOURS}h, so \`implement.yml\` was re-dispatched for issue #${issue}." \
+              '' \
+              "Sessions spent so far: ${spent} of ${MAX_ATTEMPTS}.")"
+            echo "- #${pr} — re-dispatched \`implement.yml\` for issue #${issue} (${spent}/${MAX_ATTEMPTS} sessions spent)" \
+              >> "${RUNNER_TEMP}/redispatches.txt"
+          done < "${RUNNER_TEMP}/candidates.tsv"
+
+          if [ -s "${RUNNER_TEMP}/redispatches.txt" ]; then
+            {
+              echo "## ▶️ Automatic re-entry on a stalled PR"
+              echo
+              cat "${RUNNER_TEMP}/redispatches.txt"
+              echo
+            } >> "$SIGNALS"
+            echo "::warning::There was an automatic re-entry — see today's report issue."
+          else
+            echo "No stalled PR eligible for re-entry."
+          fi
+
+      - uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        with:
+          # Auth-mode toggle via the repo variable FACTORY_AUTH: unset (or "api") uses the
+          # metered ANTHROPIC_API_KEY secret; "oauth" uses the CLAUDE_CODE_OAUTH_TOKEN
+          # subscription credential. The unused credential resolves to an empty string, which
+          # the action treats as absent.
+          anthropic_api_key: ${{ vars.FACTORY_AUTH != 'oauth' && secrets.ANTHROPIC_API_KEY || '' }}
+          claude_code_oauth_token: ${{ vars.FACTORY_AUTH == 'oauth' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          allowed_bots: "claude"
+          prompt: |
+            Write a summary of the last 24h of progress: commits, opened/merged PRs, completed
+            issues, project/docs/ROADMAP.md items that advanced, pending decisions (label
+            decision-needed), and any blockers. Be concise.
+
+            You have NO ability to publish to GitHub: WRITE the summary to the file
+            ${{ runner.temp }}/report.md. A separate, non-AI step opens the issue with that
+            content. `Write` is only for that file.
+
+            BUDGET AND TOOLS: you have 25 turns and ONLY Read, Glob, Grep, Write, TodoWrite, and
+            Bash with `git log`, `gh issue list`, `gh issue view`, `gh pr list`, and `ls`. There
+            is no `cat`, `grep`, `head`, `tail`, `wc`, `find`, or `gh issue create` — every
+            attempt is a wasted turn. If the budget is running low, write the file with what
+            you've found.
+          # `Bash(gh issue:*)` is excluded: it was the widest wildcard in the factory —
+          # authorizing `gh issue create/edit/comment/close` on any issue. The non-AI step below
+          # publishes now. Reading stays via `gh issue list`; the Bash reading utilities are
+          # excluded because none of them respect the `deny` list in `.claude/settings.json`.
+          claude_args: '--max-turns 25 --model claude-sonnet-5 --allowed-tools "Read,Glob,Grep,Write,TodoWrite,Bash(git log:*),Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh pr list:*),Bash(ls:*)"'
+
+      # Publishes the report: without `Bash(gh issue:*)` on the agent, this non-AI step opens
+      # the issue, from the file.
+      #
+      # What happens when the agent fails: the issue is opened regardless, with the non-AI
+      # signals surveyed above and a warning at the top, AND the job stays red. A visible signal
+      # and a red check aren't alternatives — losing either one is the gap this design closes.
+      - name: Open the report issue (non-AI step)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          F: ${{ runner.temp }}/report.md
+          SIGNALS: ${{ runner.temp }}/signals.md
+          OUT: ${{ runner.temp }}/issue.md
+        run: |
+          set -euo pipefail
+          today=$(date -u +%Y-%m-%d)
+          # `touch` because the signals step may not have run (an earlier failure, `always()`).
+          touch "$SIGNALS"
+
+          failed=0
+          : > "$OUT"
+          if [ ! -s "$F" ]; then
+            failed=1
+            {
+              echo "> [!CAUTION]"
+              echo "> **The report agent wrote nothing.** Today's summary doesn't exist;"
+              echo "> what follows is only the non-AI survey. The job went red — check the"
+              echo "> run before trusting this issue as a picture of the day."
+              echo
+            } > "$OUT"
+          fi
+          cat "$SIGNALS" >> "$OUT"
+          if [ "$failed" -eq 0 ]; then
+            cat "$F" >> "$OUT"
+          fi
+
+          gh issue create --title "Daily report — ${today}" --body-file "$OUT" --label report
+          if [ "$failed" -eq 1 ]; then
+            echo "::error::The agent did not write the report to $F. Today's issue only carries the non-AI signals."
+            exit 1
+          fi
+          echo "Report for ${today} published."

@@ -1,0 +1,547 @@
+name: Design Critic
+# design-critic: independent visual QA for every UI PR, over the RENDERED result — never over
+# CSS on disk. Consumes the evidence `screenshots.yml` produces. The builder never judges its
+# own visual output.
+#
+# DP-5: the prompt below is the executable contract for this role — see
+# `.claude/agents/design-critic.md`, a derived role card only (DECISIONS.md D-002).
+on:
+  pull_request:
+    # `labeled`/`unlabeled` for the same reason as `review.yml`: the `delivery:incomplete` ->
+    # `delivery:complete` swap does NOT emit `synchronize`, and that's exactly the instant the
+    # PR becomes criticizable.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    # THIS LIST HAS TO BE IDENTICAL TO `screenshots.yml`'s. The critic depends on that
+    # workflow's artifact: if it triggered where the capturer doesn't, it would wait 20 minutes
+    # for a run that will never exist and fail-closed reject a correct PR. This evidence infra's
+    # files are in BOTH lists, so a change to the infra is exercised by the PR that makes it.
+    paths:
+      - 'app/web/**/*.svelte'
+      - 'app/web/src/app.html'
+      - '**/*.css'
+      - 'project/design/DESIGN.md'
+      - 'factory/docs/DESIGN-CRITIC-RUBRIC.md'
+      - '.claude/agents/design-critic.md'
+      - '.github/workflows/screenshots.yml'
+      - '.github/workflows/design-critic.yml'
+      - '.github/scripts/screenshots.mjs'
+      - '.github/scripts/ui-routes.mjs'
+      - '.github/scripts/preview-url.mjs'
+      - '.github/scripts/await-screenshots.mjs'
+      - '.github/scripts/check-visual-evidence.mjs'
+      - '.github/scripts/critic-verdict.mjs'
+      - '.github/scripts/merge-critic-passes.mjs'
+
+permissions:
+  contents: read
+  pull-requests: write  # publish the verdict (non-AI step)
+  issues: read           # read the PR's comments for the workflow-self-modification guard-rail
+  actions: read          # find and download the `Screenshots` run's artifact
+  id-token: write
+  # No `actions: write`, unlike `review.yml`: nothing here triggers or re-runs a workflow, and
+  # that permission would allow deleting the very evidence artifact this job exists to read.
+
+# No `concurrency`, unlike `review.yml`, and like `screenshots.yml`: a cancelled check run
+# enters the PR's state as CANCELLED and blocks merge even with everything else green. That
+# matters more here, because this is a GATE — its state has to mean something. The cost
+# `cancel-in-progress` would save is already bounded by the completeness-label gate below,
+# which makes the critic run over closed delivery rather than every WIP push.
+
+jobs:
+  design-critic:
+    # Same gate as `review.yml` (D-019): visually criticizing a state the developer-lead is
+    # still going to rewrite pays for the factory's most expensive AI round (every route, every
+    # viewport, full-page) over a screen that won't exist. The label swap fires `labeled`,
+    # bringing the critique back over the final state.
+    #
+    # There is no opt-in label: the critic is one of the factory's quality gates, and an opt-in
+    # gate isn't a gate.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'delivery:incomplete') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      # Critic integrity — the same D-033 block as `review.yml`/`security.yml`/`verdict.yml`,
+      # with ONE extension that only exists here and is the point of this step: the critic's
+      # ruler lives OUTSIDE `.claude/`. Without restoring `factory/docs/` from the base, a UI PR
+      # could rewrite the very criteria it's about to be judged against.
+      - name: Use the base branch's agent config and rubric, not the reviewed branch's
+        env:
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin "${BASE}"
+
+          # Erase ALL agent config from the branch under review — root AND subdirectories.
+          find . -path ./.git -prune -o -path ./node_modules -prune -o \
+                 \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name AGENTS.md \
+                    -o -name .mcp.json -o -name .claude \) \
+                 -print0 | xargs -0r rm -rf
+
+          # Restore from the base branch whatever it versions at those paths.
+          git ls-tree -r --name-only FETCH_HEAD \
+            | grep -E '(^|/)(CLAUDE\.md|AGENTS\.md|\.mcp\.json)$|(^|/)\.claude/' \
+            | xargs -r git checkout FETCH_HEAD --
+
+          # The ruler and craft floor: the critic's rubric, the principles, and the category
+          # playbooks. `rm -rf` before the checkout because a file the PR ADDS at these paths
+          # doesn't get removed by `git checkout` of the base — and a new playbook written by the
+          # PR itself would be a ruler written by the one it judges.
+          rm -rf factory/docs/DESIGN-CRITIC-RUBRIC.md factory/docs/CRAFT-PRINCIPLES.md factory/docs/playbooks
+          git ls-tree -r --name-only FETCH_HEAD \
+            | grep -E '^factory/docs/(DESIGN-CRITIC-RUBRIC\.md|CRAFT-PRINCIPLES\.md|playbooks/)' \
+            | xargs -r git checkout FETCH_HEAD --
+
+          # The gate's MECHANICS also come from the base, by the same argument as the ruler:
+          # `check-visual-evidence.mjs` decides whether there's anything to critique and
+          # `critic-verdict.mjs` decides whether the verdict rejects — a UI PR that rewrote them
+          # would buy its own approval without touching a line of the rubric. No `rm -rf` here,
+          # unlike `factory/docs/`: a script the PR ADDS isn't executed by this job (the modules
+          # imported by the base's own scripts are the base's, restored just above), and erasing
+          # the whole folder would break a PR that only adds a new script.
+          git ls-tree -r --name-only FETCH_HEAD \
+            | grep -E '^\.github/scripts/' \
+            | xargs -r git checkout FETCH_HEAD --
+
+          # `project/design/DESIGN.md` is NOT restored, deliberately: a PR that changes the
+          # visual contract after the human gate approved it has to be judged against the NEW
+          # contract. The prompt is what protects the approved sections, treating a diff there as
+          # a finding — not this step.
+
+          # Discard the credential `actions/checkout` persisted in `.git/config`.
+          git config --unset-all http.https://github.com/.extraheader || true
+
+          echo "Agent config and critic ruler restored from ${BASE}; credential discarded."
+
+          # Baseline of the EXPECTED divergence. Anything BEYOND this by the end of the job is
+          # mutation from an unknown origin.
+          git status --porcelain > "${RUNNER_TEMP}/ws-expected.txt"
+          echo "::group::Workspace after restoration (expected divergence)"
+          cat "${RUNNER_TEMP}/ws-expected.txt"
+          echo "::endgroup::"
+
+      # The evidence is ANOTHER workflow's artifact, which waits up to 900s for the deploy
+      # preview. Waiting costs runner minutes; the alternative (`workflow_run: [Screenshots]`)
+      # would cost the whole gate, because a `workflow_run` check doesn't enter the PR's check
+      # list. The full reasoning is in the script's header.
+      - name: Wait for the PR's visual evidence
+        id: evidence
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .github/scripts/await-screenshots.mjs
+
+      - name: Download the run's screenshots
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ steps.evidence.outputs.run_id }}
+        run: gh run download "${RUN_ID}" --name screenshots --dir artifacts/screenshots
+
+      # The evidence gate, and it runs BEFORE the agent on purpose: don't pay for an AI session
+      # to judge what doesn't exist. If it fails here, the script already writes the outright
+      # rejection to the verdict file, and the publish step (`if: always()`) publishes it — the
+      # PR goes red WITH an explanation, not red and mute.
+      #
+      # `!cancelled()` instead of the default: it's exactly when the wait or the download fail
+      # that no evidence exists at all, and that's when this step needs to run to write the
+      # explanation. Without this, the job's most likely failure mode — an unstable deploy
+      # preview, hence no capture — would be the one that stays red and mute.
+      - name: Check the visual evidence (non-AI step, fail-closed)
+        if: ${{ !cancelled() }}
+        env:
+          VERDICT_FILE: ${{ runner.temp }}/design-critic-verdict.md
+        run: node .github/scripts/check-visual-evidence.mjs
+
+      # TWO INDEPENDENT PASSES (D-087). A single critic pass samples the contract — it doesn't
+      # cover it exhaustively — so a real, high-severity defect can survive many rounds by never
+      # landing in one pass's sample. Two passes with an IDENTICAL prompt exist because the
+      # diversity has to come from sampling, not from different instructions — different
+      # instructions would produce two different critics, and the union would measure the gap
+      # between prompts, not coverage.
+      #
+      # The two prompt copies are kept identical by a dedicated test that fails if they diverge —
+      # two copies of a contract drift apart silently otherwise; here divergence can't happen
+      # without CI catching it.
+      - name: 'Pass A — independent visual critique'
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        id: claude-a
+        continue-on-error: true
+        with:
+          # Auth-mode toggle via the repo variable FACTORY_AUTH: unset (or "api") uses the
+          # metered ANTHROPIC_API_KEY secret; "oauth" uses the CLAUDE_CODE_OAUTH_TOKEN
+          # subscription credential. The unused credential resolves to an empty string, which
+          # the action treats as absent.
+          anthropic_api_key: ${{ vars.FACTORY_AUTH != 'oauth' && secrets.ANTHROPIC_API_KEY || '' }}
+          claude_code_oauth_token: ${{ vars.FACTORY_AUTH == 'oauth' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          allowed_bots: "claude"
+          prompt: |
+            You are design-critic (see .claude/agents/design-critic.md): independent, read-only,
+            post-render visual QA. You don't edit, don't fix, and don't open a PR — you only
+            judge.
+
+            THE RULER — read all three before looking at any image, in this order:
+            1. `factory/docs/DESIGN-CRITIC-RUBRIC.md` — 3 pillars x 7 dimensions x severity. The
+               SINGLE SOURCE of the ruler. You NEVER derive your own criteria at runtime: the
+               ruler is fixed and versioned, and variety between projects comes from
+               `project/design/DESIGN.md`, not from here.
+            2. `project/design/DESIGN.md` — this product's APPROVED visual contract. It beats any
+               skill and any preference of yours. Judge against what's written there (the
+               signature, the tokens, the scale, the responsiveness, the states), not against
+               your taste.
+            3. `.claude/rules/design-antipatterns.md` — the [CRITIC] checklist. The [LINT] items
+               are NOT yours: those are for the deterministic gate.
+
+            ADD the extra rubric from the category playbook declared in `DESIGN.md`'s own opening
+            section, if one is declared (`factory/docs/playbooks/`). A playbook only TIGHTENS the
+            requirement; it never replaces the rubric or the checklist.
+
+            An antipattern isn't an automatic veto: it's a finding when it shows up as an
+            unconscious default. If `DESIGN.md` carries a recorded justification tied to THIS
+            product, it isn't a finding — it's a decision. Check before accusing.
+
+            WHERE THE TRUTH COMES FROM. What you judge is the PIXEL, not the code. Critiquing
+            source code anticipates a problem the render disproves and misses what only shows up
+            on screen. Therefore:
+            - The evidence is in `artifacts/screenshots/<route>-<viewport>.png`, at the three
+              viewports 375/768/1280. READ EVERY image — every route at every width. An earlier
+              step already guaranteed they're all there.
+            - The disk DIVERGES from the commit on purpose: a step in this job restored
+              `CLAUDE.md`, `.claude/`, the rubric, and the playbooks from the BASE branch
+              (D-033), so this PR can't rewrite the criteria that judge it. So, to claim the PR
+              changed, removed, or weakened anything, confirm it in `gh pr diff`. Didn't see the
+              line? Don't claim it.
+            - If `gh pr diff` shows a change to any APPROVED section of `project/design/DESIGN.md`,
+              that's a High finding on dimension 7: changing the approved contract is a
+              `decision-needed`. Only an addition to a "design memory" section (if the contract
+              has one) is accepted without a gate.
+
+            THE VERDICT GOES TO A FILE. You have NO ability to publish to GitHub: WRITE the
+            complete verdict — even if it's "no findings" — to
+            ${{ runner.temp }}/design-critic-verdict-a.md. A separate, non-AI step publishes that
+            file as a PR comment. `Write` is only for that file; don't change anything else in
+            the repository. The file may already exist: overwrite it.
+
+            File format, in this order:
+            - a title `## design-critic — <APPROVED|REJECTED>`;
+            - one finding per line, formatted
+              `- [High|Med|Low] D<1-7> · <route>@<viewport> — <what's wrong> -> <concrete fix>`;
+            - a final `### Anti-default test` section answering, in writing, the mandatory
+              question: **"could this have come from any similar prompt?"** If the answer is
+              yes, that's a High finding on dimension 7 EVEN IF the screen is functionally
+              correct — exactly the defect this role exists to catch, and the only one no other
+              gate in the factory catches;
+            - the last line, alone: `REJECTED` or `APPROVED`.
+
+            The close is mechanical, not a judgment call: any High -> REJECTED. Two or more Med
+            in the SAME dimension -> REJECTED. Only Low -> APPROVED, with the Lows recorded.
+
+            Every finding comes with a concrete fix and the route/viewport where it appears.
+            "It's generic" isn't a finding; "the hero on home@1280 is a centered badge + title +
+            subtitle + two buttons (antipattern 2), and the margin rule from the signature
+            doesn't show at any width" is a finding.
+
+            BUDGET AND TOOLS — read this before starting, trying what doesn't exist burns turns
+            for nothing. You have 60 turns and ONLY these tools:
+
+              Read, Glob, Grep, Write, TodoWrite
+              Bash: ls, git log, git show, gh pr view, gh pr diff
+
+            These do NOT exist here, and every attempt is a wasted turn: `cat`, `grep`, `head`,
+            `tail`, `wc`, `find`, `git diff` (use `Read`/`Grep`/`Glob` and `gh pr diff`), and
+            `gh pr comment` (the verdict goes to the FILE above; the non-AI step publishes it).
+            `Read` opens a PNG — that's how you look at the evidence.
+
+            There are 15 images and they ARE the work: budget turns to read them, not to explore
+            the repository. If the budget is running low, STOP investigating and write the
+            verdict file with what you have — a partial critique published beats a red job with
+            nothing. Never finish without writing the file.
+          # Same allow-list as the Reviewer, for the same reasons: `Bash(gh pr comment:*)` is
+          # excluded (the non-AI step publishes, from the file), and the Bash reading utilities
+          # are excluded (none respects the `deny` list in `.claude/settings.json`, and
+          # `find -exec` is arbitrary execution).
+          #
+          # `--max-turns 60`: 15 images are the role's fixed cost, and the rest of the budget is
+          # analysis. Between Verdict's 40 and the Reviewer's 80 because there's no large diff to
+          # walk here — there's evidence to look at.
+          claude_args: '--max-turns 60 --model claude-sonnet-5 --allowed-tools "Read,Glob,Grep,Write,TodoWrite,Bash(ls:*),Bash(git log:*),Bash(git show:*),Bash(gh pr view:*),Bash(gh pr diff:*)"'
+
+      - name: Classify Pass A's failure as infra or real (F2)
+        id: infra-a
+        if: steps.claude-a.outcome == 'failure'
+        run: |
+          log="${RUNNER_TEMP}/claude-execution-output.json"
+          if [ -f "$log" ] && grep -qiE 'ETIMEDOUT|ECONNRESET|ENOTFOUND|TLS|SSL|timed out|502|503|504|Service Unavailable|Bad Gateway|Gateway Timeout|overloaded_error' "$log"; then
+            echo "infra=true" >> "$GITHUB_OUTPUT"
+            echo "Pass A's failure log matches a distinguishable infra pattern — retrying once."
+          else
+            echo "infra=false" >> "$GITHUB_OUTPUT"
+            echo "Pass A's failure does not match a known infra pattern — no retry, staying fail-closed."
+          fi
+
+      - name: 'Pass A — retry once after an infra failure (F2)'
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        id: claude-a-retry
+        if: steps.claude-a.outcome == 'failure' && steps.infra-a.outputs.infra == 'true'
+        with:
+          anthropic_api_key: ${{ vars.FACTORY_AUTH != 'oauth' && secrets.ANTHROPIC_API_KEY || '' }}
+          claude_code_oauth_token: ${{ vars.FACTORY_AUTH == 'oauth' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          allowed_bots: "claude"
+          prompt: |
+            You are design-critic. This is a retry of Pass A after an infra failure — same task:
+            independent, read-only, post-render visual QA. Read
+            `factory/docs/DESIGN-CRITIC-RUBRIC.md`, `project/design/DESIGN.md`, and
+            `.claude/rules/design-antipatterns.md` (the [CRITIC] items), in that order. Read
+            every screenshot in `artifacts/screenshots/`. Judge the PIXEL — the disk's
+            `CLAUDE.md`/`.claude/` and `project/design/DESIGN.md`'s approved sections are
+            authoritative per D-033; confirm any claimed change via `gh pr diff`.
+
+            WRITE the complete verdict to ${{ runner.temp }}/design-critic-verdict-a.md: a title
+            `## design-critic — <APPROVED|REJECTED>`, one finding per line
+            (`- [High|Med|Low] D<1-7> · <route>@<viewport> — <what's wrong> -> <fix>`), an
+            `### Anti-default test` section, and the last line alone: `REJECTED` or `APPROVED`.
+            Any High -> REJECTED. Two-plus Med in one dimension -> REJECTED.
+
+            You have 60 turns and ONLY: Read, Glob, Grep, Write, TodoWrite, and Bash restricted
+            to ls/git log/git show/gh pr view/gh pr diff. If the budget is running low, write the
+            verdict file with what you have.
+          claude_args: '--max-turns 60 --model claude-sonnet-5 --allowed-tools "Read,Glob,Grep,Write,TodoWrite,Bash(ls:*),Bash(git log:*),Bash(git show:*),Bash(gh pr view:*),Bash(gh pr diff:*)"'
+
+      # THE SECOND SAMPLE. Prompt identical to Pass A's — the coverage difference D-087 measures
+      # comes from sampling, not from different instructions. Runs even if A failed
+      # (`if: always()`): a lost pass can't cost both, and the merge step handles either one
+      # being missing.
+      - name: 'Pass B — second independent sample'
+        if: always()
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        id: claude-b
+        continue-on-error: true
+        with:
+          # Auth-mode toggle via the repo variable FACTORY_AUTH: unset (or "api") uses the
+          # metered ANTHROPIC_API_KEY secret; "oauth" uses the CLAUDE_CODE_OAUTH_TOKEN
+          # subscription credential. The unused credential resolves to an empty string, which
+          # the action treats as absent.
+          anthropic_api_key: ${{ vars.FACTORY_AUTH != 'oauth' && secrets.ANTHROPIC_API_KEY || '' }}
+          claude_code_oauth_token: ${{ vars.FACTORY_AUTH == 'oauth' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          allowed_bots: "claude"
+          prompt: |
+            You are design-critic (see .claude/agents/design-critic.md): independent, read-only,
+            post-render visual QA. You don't edit, don't fix, and don't open a PR — you only
+            judge.
+
+            THE RULER — read all three before looking at any image, in this order:
+            1. `factory/docs/DESIGN-CRITIC-RUBRIC.md` — 3 pillars x 7 dimensions x severity. The
+               SINGLE SOURCE of the ruler. You NEVER derive your own criteria at runtime: the
+               ruler is fixed and versioned, and variety between projects comes from
+               `project/design/DESIGN.md`, not from here.
+            2. `project/design/DESIGN.md` — this product's APPROVED visual contract. It beats any
+               skill and any preference of yours. Judge against what's written there (the
+               signature, the tokens, the scale, the responsiveness, the states), not against
+               your taste.
+            3. `.claude/rules/design-antipatterns.md` — the [CRITIC] checklist. The [LINT] items
+               are NOT yours: those are for the deterministic gate.
+
+            ADD the extra rubric from the category playbook declared in `DESIGN.md`'s own opening
+            section, if one is declared (`factory/docs/playbooks/`). A playbook only TIGHTENS the
+            requirement; it never replaces the rubric or the checklist.
+
+            An antipattern isn't an automatic veto: it's a finding when it shows up as an
+            unconscious default. If `DESIGN.md` carries a recorded justification tied to THIS
+            product, it isn't a finding — it's a decision. Check before accusing.
+
+            WHERE THE TRUTH COMES FROM. What you judge is the PIXEL, not the code. Critiquing
+            source code anticipates a problem the render disproves and misses what only shows up
+            on screen. Therefore:
+            - The evidence is in `artifacts/screenshots/<route>-<viewport>.png`, at the three
+              viewports 375/768/1280. READ EVERY image — every route at every width. An earlier
+              step already guaranteed they're all there.
+            - The disk DIVERGES from the commit on purpose: a step in this job restored
+              `CLAUDE.md`, `.claude/`, the rubric, and the playbooks from the BASE branch
+              (D-033), so this PR can't rewrite the criteria that judge it. So, to claim the PR
+              changed, removed, or weakened anything, confirm it in `gh pr diff`. Didn't see the
+              line? Don't claim it.
+            - If `gh pr diff` shows a change to any APPROVED section of `project/design/DESIGN.md`,
+              that's a High finding on dimension 7: changing the approved contract is a
+              `decision-needed`. Only an addition to a "design memory" section (if the contract
+              has one) is accepted without a gate.
+
+            THE VERDICT GOES TO A FILE. You have NO ability to publish to GitHub: WRITE the
+            complete verdict — even if it's "no findings" — to
+            ${{ runner.temp }}/design-critic-verdict-b.md. A separate, non-AI step publishes that
+            file as a PR comment. `Write` is only for that file; don't change anything else in
+            the repository. The file may already exist: overwrite it.
+
+            File format, in this order:
+            - a title `## design-critic — <APPROVED|REJECTED>`;
+            - one finding per line, formatted
+              `- [High|Med|Low] D<1-7> · <route>@<viewport> — <what's wrong> -> <concrete fix>`;
+            - a final `### Anti-default test` section answering, in writing, the mandatory
+              question: **"could this have come from any similar prompt?"** If the answer is
+              yes, that's a High finding on dimension 7 EVEN IF the screen is functionally
+              correct — exactly the defect this role exists to catch, and the only one no other
+              gate in the factory catches;
+            - the last line, alone: `REJECTED` or `APPROVED`.
+
+            The close is mechanical, not a judgment call: any High -> REJECTED. Two or more Med
+            in the SAME dimension -> REJECTED. Only Low -> APPROVED, with the Lows recorded.
+
+            Every finding comes with a concrete fix and the route/viewport where it appears.
+            "It's generic" isn't a finding; "the hero on home@1280 is a centered badge + title +
+            subtitle + two buttons (antipattern 2), and the margin rule from the signature
+            doesn't show at any width" is a finding.
+
+            BUDGET AND TOOLS — read this before starting, trying what doesn't exist burns turns
+            for nothing. You have 60 turns and ONLY these tools:
+
+              Read, Glob, Grep, Write, TodoWrite
+              Bash: ls, git log, git show, gh pr view, gh pr diff
+
+            These do NOT exist here, and every attempt is a wasted turn: `cat`, `grep`, `head`,
+            `tail`, `wc`, `find`, `git diff` (use `Read`/`Grep`/`Glob` and `gh pr diff`), and
+            `gh pr comment` (the verdict goes to the FILE above; the non-AI step publishes it).
+            `Read` opens a PNG — that's how you look at the evidence.
+
+            There are 15 images and they ARE the work: budget turns to read them, not to explore
+            the repository. If the budget is running low, STOP investigating and write the
+            verdict file with what you have — a partial critique published beats a red job with
+            nothing. Never finish without writing the file.
+          claude_args: '--max-turns 60 --model claude-sonnet-5 --allowed-tools "Read,Glob,Grep,Write,TodoWrite,Bash(ls:*),Bash(git log:*),Bash(git show:*),Bash(gh pr view:*),Bash(gh pr diff:*)"'
+
+      - name: Classify Pass B's failure as infra or real (F2)
+        id: infra-b
+        if: always() && steps.claude-b.outcome == 'failure'
+        run: |
+          log="${RUNNER_TEMP}/claude-execution-output.json"
+          if [ -f "$log" ] && grep -qiE 'ETIMEDOUT|ECONNRESET|ENOTFOUND|TLS|SSL|timed out|502|503|504|Service Unavailable|Bad Gateway|Gateway Timeout|overloaded_error' "$log"; then
+            echo "infra=true" >> "$GITHUB_OUTPUT"
+            echo "Pass B's failure log matches a distinguishable infra pattern — retrying once."
+          else
+            echo "infra=false" >> "$GITHUB_OUTPUT"
+            echo "Pass B's failure does not match a known infra pattern — no retry, staying fail-closed."
+          fi
+
+      - name: 'Pass B — retry once after an infra failure (F2)'
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        id: claude-b-retry
+        if: always() && steps.claude-b.outcome == 'failure' && steps.infra-b.outputs.infra == 'true'
+        with:
+          anthropic_api_key: ${{ vars.FACTORY_AUTH != 'oauth' && secrets.ANTHROPIC_API_KEY || '' }}
+          claude_code_oauth_token: ${{ vars.FACTORY_AUTH == 'oauth' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          allowed_bots: "claude"
+          prompt: |
+            You are design-critic. This is a retry of Pass B after an infra failure — same task:
+            independent, read-only, post-render visual QA. Read
+            `factory/docs/DESIGN-CRITIC-RUBRIC.md`, `project/design/DESIGN.md`, and
+            `.claude/rules/design-antipatterns.md` (the [CRITIC] items), in that order. Read
+            every screenshot in `artifacts/screenshots/`. Judge the PIXEL — the disk's
+            `CLAUDE.md`/`.claude/` and `project/design/DESIGN.md`'s approved sections are
+            authoritative per D-033; confirm any claimed change via `gh pr diff`.
+
+            WRITE the complete verdict to ${{ runner.temp }}/design-critic-verdict-b.md: a title
+            `## design-critic — <APPROVED|REJECTED>`, one finding per line
+            (`- [High|Med|Low] D<1-7> · <route>@<viewport> — <what's wrong> -> <fix>`), an
+            `### Anti-default test` section, and the last line alone: `REJECTED` or `APPROVED`.
+            Any High -> REJECTED. Two-plus Med in one dimension -> REJECTED.
+
+            You have 60 turns and ONLY: Read, Glob, Grep, Write, TodoWrite, and Bash restricted
+            to ls/git log/git show/gh pr view/gh pr diff. If the budget is running low, write the
+            verdict file with what you have.
+          claude_args: '--max-turns 60 --model claude-sonnet-5 --allowed-tools "Read,Glob,Grep,Write,TodoWrite,Bash(ls:*),Bash(git log:*),Bash(git show:*),Bash(gh pr view:*),Bash(gh pr diff:*)"'
+
+      # Discards the credential `claude-code-action` writes to `.git/config` during its own
+      # bootstrap. See D-032 and the longer comment in `review.yml`.
+      - name: Discard the .git/config credential after the agent
+        if: always()
+        run: |
+          git config --unset-all http.https://github.com/.extraheader || true
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+
+      # D-042, applied. One divergence here is expected beyond `review.yml`'s — the PNGs
+      # downloaded into `artifacts/`, which `.gitignore` covers — which is exactly why the
+      # baseline is taken AFTER restoration and BEFORE the download.
+      - name: Check for workspace divergence (D-042)
+        if: always()
+        run: |
+          set -euo pipefail
+          touch "${RUNNER_TEMP}/ws-expected.txt"
+          git status --porcelain > "${RUNNER_TEMP}/ws-final.txt"
+          echo "::group::Workspace at the end of the job"
+          cat "${RUNNER_TEMP}/ws-final.txt"
+          echo "::endgroup::"
+          grep -Fxv -f "${RUNNER_TEMP}/ws-expected.txt" "${RUNNER_TEMP}/ws-final.txt" \
+            > "${RUNNER_TEMP}/ws-unexpected.txt" || true
+          if [ -s "${RUNNER_TEMP}/ws-unexpected.txt" ]; then
+            echo "::warning::The workspace diverged from the commit under critique beyond the config/rubric restoration. The verdict may describe the disk, not the render — see the warning in the PR comment."
+          else
+            echo "Workspace has no unexpected divergence."
+          fi
+
+      # Publishes the verdict AND stands in for the workflow-self-modification guard-rail.
+      # Without `Bash(gh pr comment:*)` on the agent, this non-AI step comments, from the file.
+      #
+      # It covers BOTH rejection paths: the verdict the critic wrote, and the outright rejection
+      # `check-visual-evidence.mjs` writes when a screenshot is missing. Both cases produce a
+      # file, and both get the PR an explanation.
+      - name: Merge the two passes (non-AI step)
+        if: always()
+        env:
+          PASS_A: ${{ runner.temp }}/design-critic-verdict-a.md
+          PASS_B: ${{ runner.temp }}/design-critic-verdict-b.md
+          VERDICT_FILE: ${{ runner.temp }}/design-critic-verdict.md
+        run: node .github/scripts/merge-critic-passes.mjs
+
+      - name: Publish the verdict on the PR (non-AI step)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          F: ${{ runner.temp }}/design-critic-verdict.md
+          DIVERGENCE: ${{ runner.temp }}/ws-unexpected.txt
+          OUT: ${{ runner.temp }}/design-critic-comment.md
+        run: |
+          set -euo pipefail
+          if [ ! -s "$F" ]; then
+            echo "::error::design-critic did not write a verdict to $F. The visual critique did not happen — treat as rejected, not green."
+            exit 1
+          fi
+          if [ -s "$DIVERGENCE" ]; then
+            {
+              echo "> [!WARNING]"
+              echo "> **The runner's workspace diverged from the commit under critique** (D-042)."
+              echo "> These paths changed outside the config/rubric restoration ([D-033]):"
+              sed 's/^/> - `/; s/$/`/' "$DIVERGENCE"
+              echo ">"
+              echo "> The verdict below may describe the DISK, not the render. Check it against"
+              echo "> \`gh pr diff ${PR}\` before acting on any finding."
+              echo
+              cat "$F"
+            } > "$OUT"
+          else
+            cp "$F" "$OUT"
+          fi
+          # The memory of WHICH commits have already been critiqued. HTML comment: invisible in
+          # the rendered body, and `critic-verdict.mjs` reads it back to derive the round instead
+          # of incrementing it — what makes the count idempotent and makes two runs of the same
+          # commit worth ONE round.
+          printf '\n<!-- design-critic:sha=%s -->\n' "${SHA}" >> "$OUT"
+          gh pr comment "${PR}" --body-file "$OUT"
+          echo "design-critic verdict published on PR #${PR} (commit ${SHA})."
+
+      # The close, and what turns the critic into an actual GATE. This step reads the last line,
+      # makes the job RED when it isn't `APPROVED`, and counts the iteration round in a label on
+      # the PR itself — `design:round-N`, on the model of the re-entry counter's `reentry:N`.
+      # Past the 3-round ceiling, `needs-human` goes on and the PR leaves the automatic queue.
+      #
+      # AFTER publication, with `if: always()`: the PR needs to go red WITH the explanation
+      # already in the thread, not red and mute. And `always()` because the outright rejection
+      # for missing evidence is a round too — it fails above, and without this it wouldn't count.
+      - name: Close the verdict and count the round (non-AI step)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERDICT_FILE: ${{ runner.temp }}/design-critic-verdict.md
+          PR: ${{ github.event.pull_request.number }}
+          # Without this the round goes back to being counted by job invocation, and two runs of
+          # the same commit spend two rounds of the ceiling (D-087).
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .github/scripts/critic-verdict.mjs

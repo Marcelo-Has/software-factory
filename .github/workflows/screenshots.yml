@@ -1,0 +1,111 @@
+name: Screenshots
+# Visual evidence for the Visual Verification Loop. NOT AI: waits for the PR's deploy preview,
+# captures every UI route at 375/768/1280, and uploads the PNGs as a PR artifact. This is the
+# evidence `design-critic` reads — whose ABSENCE rejects the PR outright.
+#
+# Its own workflow, not a `ci.yml` job, for two reasons: the native `paths:` filter already
+# solves "run on a PR that touches UI" with zero detection code (`ci.yml` has to run on EVERY
+# PR, so the filter would have to be reimplemented inside a step); and this job depends on an
+# external system — the deploy preview — which doesn't belong in the repository's deterministic
+# judge.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    # Same "touches UI" definition as the `design-md` gate
+    # (`.github/scripts/gate-design-md.mjs`): component/route `.svelte`, any stylesheet, the
+    # document shell, and the design contract itself. This infra's own files are added too, so a
+    # change to it gets exercised by the PR that makes it.
+    #
+    # THIS LIST HAS TO BE IDENTICAL TO `design-critic.yml`'s. The critic consumes this job's
+    # artifact: if it triggers on a PR where this workflow doesn't run, it waits for a run that
+    # will never exist and fails a correct PR closed. That's why this evidence infra's own files
+    # are in both lists — whoever changes the ruler or the critic also produces the evidence
+    # that exercises it.
+    paths:
+      - 'app/web/**/*.svelte'
+      - 'app/web/src/app.html'
+      - '**/*.css'
+      - 'project/design/DESIGN.md'
+      - 'factory/docs/DESIGN-CRITIC-RUBRIC.md'
+      - '.claude/agents/design-critic.md'
+      - '.github/workflows/screenshots.yml'
+      - '.github/workflows/design-critic.yml'
+      - '.github/scripts/screenshots.mjs'
+      - '.github/scripts/ui-routes.mjs'
+      - '.github/scripts/preview-url.mjs'
+      - '.github/scripts/await-screenshots.mjs'
+      - '.github/scripts/check-visual-evidence.mjs'
+      - '.github/scripts/critic-verdict.mjs'
+      - '.github/scripts/merge-critic-passes.mjs'
+
+# Least privilege: read the code, read the deploy adapter's commit status, read the PR's
+# comments (the two preview-URL sources). No write — this workflow doesn't comment and doesn't
+# push anything.
+permissions:
+  contents: read
+  statuses: read
+  pull-requests: read
+
+# No `concurrency: cancel-in-progress`: a cancelled check run enters the PR's state as CANCELLED
+# and blocks merge even with everything else green. Letting it finish is cheaper than
+# unblocking it afterward.
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Same design as a profile's `e2e` job: the Playwright version enters the cache key,
+      # because an old browser with a new runner is a classic source of unstable captures. The
+      # browser is the BUNDLED Chromium (not a system Chrome): the capture navigates to a remote
+      # URL and the sandbox needs to stay on — see the comment in
+      # `.github/scripts/screenshots.mjs`.
+      - name: Find the Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}
+
+      - name: Install browsers
+        run: npm run test:e2e:install-browsers
+
+      # Waits for this PR's deploy preview and returns the URL, through the adapter interface
+      # (Netlify is the first implementation). Fail-closed: no URL, the job fails (the script
+      # explains why). Inputs by env, never interpolated into `run:`.
+      - name: Find the deploy preview URL
+        id: preview
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node .github/scripts/preview-url.mjs
+
+      - name: Capture the UI routes at 375 / 768 / 1280
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+        run: node .github/scripts/screenshots.mjs
+
+      # `!cancelled()`, not `success()`: if the capture fails partway, what was already captured
+      # is exactly the diagnostic material. `if-no-files-found: error` keeps the promise of
+      # evidence — an empty artifact would be a green with nothing in it.
+      - name: Attach the screenshots to the PR
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: screenshots
+          path: artifacts/screenshots
+          if-no-files-found: error

@@ -1,0 +1,258 @@
+name: Security
+# Dedicated security review + scans (dependencies and secrets) on every PR.
+#
+# DP-5: the prompt below is the executable contract for this role — there is no
+# `.claude/agents/security.md`; this workflow is the role's only source.
+on:
+  pull_request:
+    # `labeled`/`unlabeled` are here because AI review is gated by the completeness label
+    # (D-019): swapping `delivery:incomplete` for `delivery:complete` does NOT emit
+    # `synchronize`, so without these two events a PR that finishes on a label swap — no push
+    # after — would never be reviewed.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+# The developer-lead pushes a commit at every step (D-019). Without this, every push would pay
+# for a full high-cost review round of a state it's about to rewrite on the next push.
+concurrency:
+  group: security-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read          # read the PR's comments for the workflow-self-modification guard-rail
+  id-token: write
+  actions: write
+
+jobs:
+  scans:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+
+      # Scan for secrets leaked in the PR's history.
+      - name: Gitleaks (secrets)
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Dependency audit (only runs once an app actually exists). This is a GATE: a
+      # high/critical vulnerability fails CI (no `|| true`).
+      - name: npm audit
+        if: ${{ hashFiles('package-lock.json') != '' }}
+        run: npm audit --audit-level=high
+
+  ai-security-review:
+    # Don't review a PR marked `delivery:incomplete` (D-019). The gate matters more here than
+    # in `review.yml`: this job runs a stronger model. The `scans` job above (gitleaks + npm
+    # audit) runs ungated — it isn't AI, costs seconds, and a committed secret should scream on
+    # the first push.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'delivery:incomplete') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      # Security reviewer integrity. Same reasoning as `verdict.yml`/`review.yml`: the checkout
+      # above is the branch UNDER REVIEW, and `claude-code-action` loads `CLAUDE.md`/`.claude/`
+      # from the workspace — including any `command`-type `hooks.PreToolUse`, arbitrary command
+      # execution on a runner that holds `ANTHROPIC_API_KEY`/`GITHUB_TOKEN`. Without this step, a
+      # PR could rewrite the instructions of the very security reviewer meant to catch exactly
+      # that kind of thing. This job only reads (no `git push`), so it doesn't need the index
+      # caveat `fix.yml` has to handle.
+      - name: Use the base branch's agent config, not the reviewed branch's
+        env:
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin "${BASE}"
+
+          # Erase ALL agent config from the branch under review — root AND subdirectories.
+          find . -path ./.git -prune -o -path ./node_modules -prune -o \
+                 \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name AGENTS.md \
+                    -o -name .mcp.json -o -name .claude \) \
+                 -print0 | xargs -0r rm -rf
+
+          # Restore from the base branch whatever it versions at those paths.
+          git ls-tree -r --name-only FETCH_HEAD \
+            | grep -E '(^|/)(CLAUDE\.md|AGENTS\.md|\.mcp\.json)$|(^|/)\.claude/' \
+            | xargs -r git checkout FETCH_HEAD --
+
+          # Discard the credential `actions/checkout` persisted in `.git/config` (D-032):
+          # `persist-credentials` defaults to `true`.
+          git config --unset-all http.https://github.com/.extraheader || true
+
+          echo "Agent config restored from ${BASE}; checkout credential discarded."
+
+          # The step ABOVE just diverged the disk from the reviewed commit, on purpose.
+          # Recording the state here gives the baseline for what divergence is EXPECTED.
+          git status --porcelain > "${RUNNER_TEMP}/ws-expected.txt"
+          echo "::group::Workspace after restoration (expected divergence)"
+          cat "${RUNNER_TEMP}/ws-expected.txt"
+          echo "::endgroup::"
+
+      - uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        id: claude
+        continue-on-error: true
+        with:
+          # Auth-mode toggle via the repo variable FACTORY_AUTH: unset (or "api") uses the
+          # metered ANTHROPIC_API_KEY secret; "oauth" uses the CLAUDE_CODE_OAUTH_TOKEN
+          # subscription credential. The unused credential resolves to an empty string, which
+          # the action treats as absent.
+          anthropic_api_key: ${{ vars.FACTORY_AUTH != 'oauth' && secrets.ANTHROPIC_API_KEY || '' }}
+          claude_code_oauth_token: ${{ vars.FACTORY_AUTH == 'oauth' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          allowed_bots: "claude"
+          prompt: |
+            Do a SECURITY review of this PR against the baseline in `.claude/rules/security.md`.
+            Look for: injection (SQL/XSS/command), authentication/authorization failures, PII
+            exposure, hardcoded secrets, unsigned asset URLs, unverified webhook signatures, and
+            loose BaaS access rules for the active profile. Report with severity and a concrete
+            fix. Flag high risks as blocking.
+
+            You have NO ability to publish to GitHub: instead of commenting on the PR, WRITE the
+            complete verdict — even if it's "No problems found" — to the file
+            ${{ runner.temp }}/security-verdict.md. A separate, non-AI step publishes that file
+            as a PR comment. `Write` is only for that file; don't change anything else in the
+            repository.
+
+            WHERE THE TRUTH COMES FROM — read this before opening any file (D-042). What you
+            judge is this PR's COMMIT, not this runner's disk. The two DIVERGE on purpose: an
+            earlier step in this job erased `CLAUDE.md`, `AGENTS.md`, `.mcp.json` and `.claude/`
+            from the branch and put the BASE branch's version in their place (D-033), so a PR
+            can't rewrite the instructions of the reviewer about to judge it. If this PR changes
+            any of those paths, the DISK shows the BASE version, and reading the disk makes you
+            report that the PR "removed" exactly what it ADDS.
+
+            This matters doubly for a SECURITY review: the most serious finding you can produce
+            is "this PR weakens protection X", and that's exactly the finding a disk-only read
+            fabricates out of nothing.
+
+            Therefore:
+            - The source of what the PR does is `gh pr diff` and `git show <sha>:<path>`. Trust
+              the diff.
+            - `Read`/`Grep`/`Glob` read the DISK. Use them for context the diff doesn't show,
+              NEVER to conclude a line was added or removed.
+            - Before claiming this PR removes, reverts, or weakens anything, confirm in
+              `gh pr diff` that the line appears with a `-`. Didn't see the `-`? Don't claim it.
+
+            BUDGET AND TOOLS — read this before starting, trying what doesn't exist burns turns
+            for nothing. You have 80 turns and ONLY these tools:
+
+              Read, Glob, Grep, Write, TodoWrite
+              Bash: ls, git log, git show, gh pr view, gh pr diff
+
+            These do NOT exist here, and every attempt is a wasted turn: `cat`, `grep`, `head`,
+            `tail`, `wc`, `find`, `git diff` (use the `Read`/`Grep`/`Glob` tools and
+            `gh pr diff`), and `gh pr comment` (the verdict goes to the FILE above; the non-AI
+            step publishes it). Read the diff ONCE via `gh pr diff` and work from it; only open a
+            file on disk when you need to check something the diff doesn't show. If the budget is
+            running low, STOP investigating and write the verdict file with what you have — a
+            partial review published beats a red job with nothing.
+          # High-risk task -> stronger model. Same allow-list cuts as `review.yml`, for the same
+          # two reasons: `gh pr comment` is excluded (publishing is a non-AI step's job now), and
+          # the Bash reading utilities are excluded because none of them respect the `deny` list
+          # in `.claude/settings.json`, which applies to the `Read` tool, not `Bash`.
+          claude_args: '--max-turns 80 --model opus --allowed-tools "Read,Glob,Grep,Write,TodoWrite,Bash(ls:*),Bash(git log:*),Bash(git show:*),Bash(gh pr view:*),Bash(gh pr diff:*)"'
+
+      # F2 — one automatic retry on a distinguishable infra failure, keeping fail-closed. See
+      # `review.yml` for the full reasoning; the mechanism is identical here.
+      - name: Classify the failure as infra or real (F2)
+        id: infra
+        if: steps.claude.outcome == 'failure'
+        run: |
+          log="${RUNNER_TEMP}/claude-execution-output.json"
+          if [ -f "$log" ] && grep -qiE 'ETIMEDOUT|ECONNRESET|ENOTFOUND|TLS|SSL|timed out|502|503|504|Service Unavailable|Bad Gateway|Gateway Timeout|overloaded_error' "$log"; then
+            echo "infra=true" >> "$GITHUB_OUTPUT"
+            echo "Failure log matches a distinguishable infra pattern — retrying once."
+          else
+            echo "infra=false" >> "$GITHUB_OUTPUT"
+            echo "Failure does not match a known infra pattern — no retry, staying fail-closed."
+          fi
+
+      - name: Retry once after an infra failure (F2)
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        id: claude-retry
+        if: steps.claude.outcome == 'failure' && steps.infra.outputs.infra == 'true'
+        with:
+          anthropic_api_key: ${{ vars.FACTORY_AUTH != 'oauth' && secrets.ANTHROPIC_API_KEY || '' }}
+          claude_code_oauth_token: ${{ vars.FACTORY_AUTH == 'oauth' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          allowed_bots: "claude"
+          prompt: |
+            This is a retry after an infra failure on the first attempt. Do a SECURITY review of
+            this PR against `.claude/rules/security.md`: injection, authn/authz failures, PII
+            exposure, hardcoded secrets, unsigned asset URLs, unverified webhooks, loose BaaS
+            rules. Report severity and a concrete fix; flag high risks as blocking.
+
+            You have NO ability to publish to GitHub: WRITE the complete verdict to
+            ${{ runner.temp }}/security-verdict.md. A separate, non-AI step publishes it.
+
+            Judge the COMMIT via `gh pr diff` / `git show <sha>:<path>`, never the disk at
+            `CLAUDE.md`/`AGENTS.md`/`.mcp.json`/`.claude/` — those were restored from the base
+            branch (D-033) and show the BASE version even where this PR changes them.
+
+            You have 80 turns and ONLY: Read, Glob, Grep, Write, TodoWrite, and Bash restricted
+            to ls/git log/git show/gh pr view/gh pr diff. If the budget is running low, STOP and
+            write the verdict file with what you have.
+          claude_args: '--max-turns 80 --model opus --allowed-tools "Read,Glob,Grep,Write,TodoWrite,Bash(ls:*),Bash(git log:*),Bash(git show:*),Bash(gh pr view:*),Bash(gh pr diff:*)"'
+
+      # Discards the credential `claude-code-action` writes to `.git/config` during its own
+      # bootstrap — a different key than the `extraheader` `actions/checkout` persists (already
+      # covered above). See D-032.
+      - name: Discard the .git/config credential after the agent
+        if: always()
+        run: |
+          git config --unset-all http.https://github.com/.extraheader || true
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+
+      # D-042, applied — identical to `review.yml`.
+      - name: Check for workspace divergence (D-042)
+        if: always()
+        run: |
+          set -euo pipefail
+          touch "${RUNNER_TEMP}/ws-expected.txt"
+          git status --porcelain > "${RUNNER_TEMP}/ws-final.txt"
+          echo "::group::Workspace at the end of the job"
+          cat "${RUNNER_TEMP}/ws-final.txt"
+          echo "::endgroup::"
+          grep -Fxv -f "${RUNNER_TEMP}/ws-expected.txt" "${RUNNER_TEMP}/ws-final.txt" \
+            > "${RUNNER_TEMP}/ws-unexpected.txt" || true
+          if [ -s "${RUNNER_TEMP}/ws-unexpected.txt" ]; then
+            echo "::warning::The workspace diverged from the reviewed commit beyond the agent-config restoration. The verdict may describe the disk, not the diff — see the warning in the PR comment."
+          else
+            echo "Workspace has no unexpected divergence."
+          fi
+
+      # Publishes the verdict and stands in as the non-AI publication guard-rail (D-034/D-037) —
+      # see `review.yml`.
+      - name: Publish the verdict on the PR (non-AI step)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          F: ${{ runner.temp }}/security-verdict.md
+          DIVERGENCE: ${{ runner.temp }}/ws-unexpected.txt
+          OUT: ${{ runner.temp }}/security-comment.md
+        run: |
+          set -euo pipefail
+          if [ ! -s "$F" ]; then
+            echo "::error::The security review did not write a verdict to $F. Treat as rejected, not green."
+            exit 1
+          fi
+          if [ -s "$DIVERGENCE" ]; then
+            {
+              echo "> [!WARNING]"
+              echo "> **The runner's workspace diverged from the reviewed commit** (D-042)."
+              echo "> These paths changed outside the agent-config restoration ([D-033]):"
+              sed 's/^/> - `/; s/$/`/' "$DIVERGENCE"
+              echo ">"
+              echo "> The verdict below may describe the DISK, not the diff. Check it against"
+              echo "> \`gh pr diff ${PR}\` before acting on any finding."
+              echo
+              cat "$F"
+            } > "$OUT"
+          else
+            cp "$F" "$OUT"
+          fi
+          gh pr comment "${PR}" --body-file "$OUT"
+          echo "Security verdict published on PR #${PR}."

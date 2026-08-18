@@ -12,29 +12,53 @@ on:
 
 jobs:
   claude:
+    # The owner's INTERACTIVE channel, and only the owner's (`author_association == 'OWNER'`).
+    # This is the only AI workflow with no `--allowed-tools`, i.e. the agent here has the full
+    # tool set — and the comment body enters its context directly. Without the author gate,
+    # anyone able to comment would trigger an unrestricted agent with a write token: the same
+    # read -> write escalation `implement.yml` closes with its OWNER gate, and it matters more
+    # here because there's an allow-list there and none here.
+    # `author_association` reflects association, not permission: `COLLABORATOR` covers any
+    # invited collaborator, including read-only ones. Hence OWNER only.
+    # Bot-to-bot chaining doesn't happen through this path, deliberately: the autonomous
+    # responder to red CI is `fix.yml`, and issue implementation is `implement.yml`.
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event_name == 'issue_comment' &&
+       contains(github.event.comment.body, '@claude') &&
+       github.event.comment.author_association == 'OWNER') ||
+      (github.event_name == 'pull_request_review_comment' &&
+       contains(github.event.comment.body, '@claude') &&
+       github.event.comment.author_association == 'OWNER') ||
+      (github.event_name == 'pull_request_review' &&
+       contains(github.event.review.body, '@claude') &&
+       github.event.review.author_association == 'OWNER') ||
+      (github.event_name == 'issues' &&
+       (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) &&
+       github.event.issue.author_association == 'OWNER')
     runs-on: ubuntu-latest
+    # Stays `read`, on purpose. This workflow pushes commits, but the token doing the pushing is
+    # the App's — giving `contents: write` here would elevate the **GITHUB_TOKEN** on exactly
+    # the one workflow whose agent has no `--allowed-tools`: arbitrary Bash plus a write token,
+    # and without branch protection on `main` that's a direct push to `main`. Real security cost
+    # with no demonstrated benefit.
     permissions:
       contents: read
       pull-requests: read
       issues: read
       id-token: write
-      actions: read # Required for Claude to read CI results on PRs
+      actions: write # Read CI results on PRs and dispatch/manage workflows
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 1
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: "claude"
 
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
@@ -43,8 +67,16 @@ jobs:
           # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
           # prompt: 'Update the pull request description to include a summary of changes.'
 
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr *)'
-
+          # Allow-list. The OWNER gate in `if:` protects the TRIGGER, not the CONTEXT: the agent
+          # still reads the whole thread — third-party comments, bot comments, files, URLs — so
+          # it takes only the owner writing "@claude fix this" on a PR with planted third-party
+          # instructions for them to reach here. Generous list, so interactive use isn't
+          # hampered, but without the worst tail: outbound network (`curl`/`wget`) stays out, and
+          # so does `gh pr merge` (merge is human-only).
+          # `cat`/`grep`/`head`/`tail`/`wc`/`find` are excluded: `Read`/`Grep` already cover
+          # reading and respect the `deny` list in `.claude/settings.json`; `find -exec` is
+          # arbitrary execution. As in `implement.yml`, this narrows rather than closes the
+          # surface — `Bash(node:*)`/`Bash(npx:*)`/`Bash(git:*)` stay necessary. This workflow
+          # keeps `gh pr comment`/`gh issue` because it's interactive by design: the owner asks
+          # directly and expects a reply on the PR/issue.
+          claude_args: '--allowed-tools "Read,Glob,Grep,Edit,Write,TodoWrite,Bash(git:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh pr edit:*),Bash(gh pr comment:*),Bash(gh issue:*),Bash(gh run view:*),Bash(gh api:*),Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(ls:*),Bash(echo:*),Bash(sed:*),Bash(mkdir:*),Bash(mv:*),Bash(cp:*)"'

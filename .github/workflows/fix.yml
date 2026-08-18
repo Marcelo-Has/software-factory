@@ -1,0 +1,245 @@
+name: Fix on CI failure
+# When CI fails, the Fixer tries to correct it automatically.
+#
+# KNOWN LIMITATION, carried forward on purpose: this workflow only observes `ci.yml`'s result.
+# It doesn't get the F2 infra-retry treatment the verdict-family workflows do, because its
+# actual failure mode (dying without a push or a comment) is already caught by its own exit
+# guard-rail below, not by distinguishing infra from a real code failure.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read          # read the PR's comments for the exit guard-rail
+  id-token: write
+  # This job needs `actions: read` (via `additional_permissions` below) to read the failed CI
+  # run's log — without it, `gh run view --log-failed` fails silently and the agent burns its
+  # budget trying to work around a scope it doesn't have. Kept as `actions: write` rather than
+  # `read` deliberately: narrowing it is a safe-looking change that has broken CI-log reading
+  # here before, and the upside is small.
+  actions: write
+
+jobs:
+  fix:
+    # This gate matters even more than in `verdict.yml`: this job has `contents: write` and the
+    # agent has `Bash(git:*)`/`Bash(node:*)`/`Bash(npx:*)` — arbitrary execution with a write
+    # token. Without the origin gate, any fork's PR whose CI failed would trigger this. See
+    # D-039.
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'failure' &&
+          github.event.workflow_run.head_repository.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      # Fixer integrity. Same risk as `verdict.yml`: the checkout above is the branch whose CI
+      # failed, and `claude-code-action` loads `CLAUDE.md`/`.claude/` from the workspace —
+      # including any `command`-type `hooks.PreToolUse`, arbitrary command execution on a runner
+      # with `contents: write` and `GITHUB_TOKEN`. Without this step, a branch whose CI failed on
+      # purpose would rewrite the instructions of the very agent meant to "fix" it.
+      #
+      # DIFFERENCE from `verdict.yml`/`review.yml`/`security.yml`: those only read, so erasing
+      # and restoring on disk is enough. Here the Fixer ends every fix with
+      # `git add -A && git commit && git push` — if the disk held the BASE content at those
+      # paths, `add -A` would commit that content over whatever the branch versions there,
+      # permanently erasing any agent-config change the PR had made. So instead of
+      # `git checkout <path>` (which touches the index, like the other three do), the base
+      # content is written to the FILE only (`git show`) and the tracked paths get
+      # `git update-index --skip-worktree`: git ignores the disk/index difference on them, so
+      # the agent's `add -A` doesn't see them and its commit preserves what the branch had.
+      - name: Use the base branch's agent config, not the branch under fix
+        env:
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin "${BASE}"
+
+          # Agent-config paths the BRANCH already tracks — `skip-worktree` applies to these
+          # afterward.
+          tracked=$(git ls-tree -r --name-only HEAD \
+            | grep -E '(^|/)(CLAUDE\.md|CLAUDE\.local\.md|AGENTS\.md|\.mcp\.json)$|(^|/)\.claude/' || true)
+
+          # Erase ALL agent config from disk — root and subdirectories, tracked or not
+          # (`.claude/settings.local.json` is in `.gitignore`, so it's never tracked: it's gone
+          # from here and doesn't come back, since it isn't in the index).
+          find . -path ./.git -prune -o -path ./node_modules -prune -o \
+                 \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name AGENTS.md \
+                    -o -name .mcp.json -o -name .claude \) \
+                 -print0 | xargs -0r rm -rf
+
+          # Write the base's content to disk — only for the agent to READ — without touching the index.
+          git ls-tree -r --name-only FETCH_HEAD \
+            | grep -E '(^|/)(CLAUDE\.md|AGENTS\.md|\.mcp\.json)$|(^|/)\.claude/' \
+            | while IFS= read -r path; do
+                mkdir -p "$(dirname "$path")"
+                git show "FETCH_HEAD:${path}" > "$path"
+              done
+
+          # Hide the disk/index divergence on those paths from the agent's `add -A`/`commit -a`,
+          # without touching the index (unlike `git checkout <path>`).
+          if [ -n "${tracked}" ]; then
+            printf '%s\n' "${tracked}" | xargs -r git update-index --skip-worktree --
+          fi
+
+          # Discard the credential `actions/checkout` persisted in `.git/config`. This doesn't
+          # leave the next push without a credential: `claude-code-action` rewrites the remote
+          # URL with an embedded token during its own bootstrap, independent of this `unset-all`.
+          git config --unset-all http.https://github.com/.extraheader || true
+
+          echo "Agent config restored from ${BASE} for reading only; index preserved."
+
+      # Exit guard-rail (part 1/2): the branch's SHA and the instant, before the agent.
+      - id: before
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+      - uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        id: claude
+        with:
+          # Auth-mode toggle via the repo variable FACTORY_AUTH: unset (or "api") uses the
+          # metered ANTHROPIC_API_KEY secret; "oauth" uses the CLAUDE_CODE_OAUTH_TOKEN
+          # subscription credential. The unused credential resolves to an empty string, which
+          # the action treats as absent.
+          anthropic_api_key: ${{ vars.FACTORY_AUTH != 'oauth' && secrets.ANTHROPIC_API_KEY || '' }}
+          claude_code_oauth_token: ${{ vars.FACTORY_AUTH == 'oauth' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          allowed_bots: "claude"
+          # Without `actions: read`, the agent's `gh` has no Actions scope and
+          # `gh run view --log-failed` simply doesn't work — this workflow's whole reason to
+          # exist is reading red CI, so this line matters more here than anywhere else it's used.
+          additional_permissions: |
+            actions: read
+          prompt: |
+            CI failed on branch ${{ github.event.workflow_run.head_branch }}.
+
+            START BY READING THE FAILURE LOG, on your first or second turn:
+              gh run view ${{ github.event.workflow_run.id }} --log-failed
+
+            If that command fails, do NOT push through it and do NOT try to work around it
+            (searching for a token in the environment, calling the API with curl, extracting a
+            credential from the remote): that's a workflow configuration problem, not yours.
+            Comment on the PR saying you couldn't read the log, and stop.
+            Don't try to guess the cause from the code, and don't try to reproduce locally what
+            this runner doesn't run: an e2e suite needing a downloaded browser or a rules suite
+            needing a JVM/emulator aren't available here. The job's exact message is the cheapest
+            information there is — without it you burn the budget guessing.
+
+            Then fix the problem, update or add tests, and commit to the same branch to reopen
+            CI.
+
+            PUSH AFTER EVERY FIX, not only at the end: `git add -A && git commit && git push` as
+            soon as a problem is resolved. The runner is destroyed at the end of the job and
+            nothing unpushed survives. You have 40 turns. If the budget is running low, stop
+            investigating and push what you've already fixed.
+
+            Verdict — a separate agent that runs when CI turns green — decides whether the
+            delivery is complete. Don't change this PR's label or title.
+
+            Don't merge. Don't commit secrets. If the cause needs a human decision, create a
+            `decision-needed` issue (factory/docs/AUTONOMY.md).
+          # `Bash(cat:*)`, `Bash(grep:*)`, `Bash(head:*)`, `Bash(tail:*)`, `Bash(wc:*)`,
+          # `Bash(sed:*)` and `Bash(find:*)` are excluded: all were redundant with the
+          # `Read`/`Grep`/`Edit` tools already here, and wider — the `deny` list in
+          # `.claude/settings.json` applies to the `Read` tool, not `Bash`, so any of them would
+          # route around it entirely. (`find` also executes arbitrary commands via `-exec`.)
+          #
+          # THIS DOESN'T CLOSE THE CLASS — this job needs to run tests, commit, and push, so
+          # `Bash(git:*)`, `Bash(node:*)`, and `Bash(npx:*)` HAVE to stay, and all three can read
+          # any byte on the runner. On top of that, unlike `verdict.yml`, this workflow doesn't
+          # discard the `actions/checkout` credential or restore the branch's agent config before
+          # the agent runs, and it runs with `contents: write`. Allow-list containment here is
+          # PARTIAL BY CONSTRUCTION — this cut reduces surface, it doesn't close it.
+          claude_args: '--max-turns 40 --model claude-sonnet-5 --allowed-tools "Read,Glob,Grep,Edit,Write,TodoWrite,Bash(git:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr comment:*),Bash(gh issue:*),Bash(gh run view:*),Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(ls:*),Bash(echo:*),Bash(mkdir:*),Bash(mv:*),Bash(cp:*)"'
+
+      # Discards the `.git/config` credential AFTER the agent — never before, because the agent
+      # itself pushes (`git push`) during the step above, and removing the credential too early
+      # would break that push. Here the cleanup only reduces the exposure window for the
+      # following steps (observability/upload); it doesn't close the read the agent itself could
+      # do while it runs. See D-032.
+      - name: Discard the .git/config credential after the agent
+        if: always()
+        run: |
+          git config --unset-all http.https://github.com/.extraheader || true
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+
+      # Same observability implement.yml has (D-019): without it, this workflow is
+      # undiagnosable. Fails CLOSED: if redaction doesn't complete, the file is deleted instead
+      # of uploaded raw — the Actions artifact doesn't pass through the job log's secret
+      # masking.
+      - name: Redact secrets from the transcript
+        id: redact
+        if: always()
+        env:
+          T: ${{ runner.temp }}/claude-execution-output.json
+        run: |
+          [ -f "$T" ] || exit 0
+          if ! perl -i -pe 's/(gh[pousr]_|github_pat_|sk-ant-)[A-Za-z0-9_\-]{10,}/[REDACTED]/g;
+                            s{AUTHORIZATION:\s*(basic|bearer)\s+[A-Za-z0-9+/=_.-]+}{AUTHORIZATION: [REDACTED]}gi' "$T"; then
+            rm -f "$T"
+            echo "::error::Redaction failed — transcript discarded instead of uploaded raw."
+            exit 1
+          fi
+          echo "Transcript redacted before upload."
+
+      - name: Store the Fixer's transcript
+        if: always() && steps.redact.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          # No branch name in the artifact name: it contains `/` (`feat/...`), which isn't
+          # allowed in an artifact name and would fail the upload.
+          name: fix-${{ github.run_id }}
+          path: ${{ runner.temp }}/claude-execution-output.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      # Exit guard-rail (part 2/2). A dying-at-max-turns run already fails the job on its own,
+      # so this closes the remaining silent no-op: an agent step that reports success, spends a
+      # handful of turns, and produces neither a commit nor a comment. Cost: no API call, just
+      # `gh`/`git`.
+      - name: Require a pushed fix or an explanation on the PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          BEFORE: ${{ steps.before.outputs.sha }}
+          SINCE: ${{ steps.before.outputs.ts }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          AGENT: ${{ steps.claude.outcome }}
+        run: |
+          set -euo pipefail
+
+          now=$(gh api "repos/${GITHUB_REPOSITORY}/branches/${BRANCH}" --jq .commit.sha 2>/dev/null || echo '')
+          if [ -n "${now}" ] && [ "${now}" != "${BEFORE}" ]; then
+            echo "Fix pushed: ${BEFORE:0:8} -> ${now:0:8}."
+            exit 0
+          fi
+
+          pr=$(gh pr list --head "${BRANCH}" --state open --limit 1 --json number --jq '.[0].number // empty')
+          if [ -z "${pr}" ]; then
+            echo "::error::No new commit on ${BRANCH} and no open PR for it (agent step: ${AGENT}) — the Fixer produced nothing."
+            exit 1
+          fi
+
+          # Acceptable alternative outcome: couldn't fix it, but EXPLAINED on the PR.
+          # Filters by `claude[bot]`, NOT by `.user.type == "Bot"`: another bot commenting on
+          # every PR for an unrelated reason (a deploy-preview notification, say) would satisfy
+          # this branch for free and turn the guard-rail into decoration.
+          explained=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" --paginate \
+            --jq "[.[] | select(.user.login == \"claude[bot]\") | select(.created_at >= \"${SINCE}\")] | length")
+          if [ "${explained}" -gt 0 ]; then
+            echo "No commit, but the Fixer explained on PR #${pr} (${explained} comment(s))."
+            exit 0
+          fi
+
+          gh pr comment "${pr}" --body "$(printf '%s\n' \
+            '⚠️ The Fixer ran and produced nothing: no new commit on this branch and no explanation here.' \
+            '' \
+            "Run: ${RUN_URL} (transcript in the artifacts). Agent step: \`${AGENT}\`." \
+            '' \
+            'CI stays red and needs a human fix, or another dispatch.')"
+          echo "::error::The Fixer neither pushed a commit nor explained on PR #${pr} (agent step: ${AGENT}) — treat as rejected, not green."
+          exit 1
