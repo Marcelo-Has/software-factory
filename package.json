@@ -9,6 +9,9 @@
     "gate:boundary": "node .github/scripts/boundary-check.mjs"
   },
   "devDependencies": {
+    "playwright-core": "^1.62.0",
+    "postcss-html": "^2.0.0",
+    "stylelint": "^17.14.1",
     "vitest": "^3.2.7"
   }
 }
