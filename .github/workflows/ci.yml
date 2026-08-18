@@ -45,9 +45,12 @@ jobs:
   # itself whether it applies, by the changed paths, and exits 0 on the empty project/app
   # skeleton — same fail-closed contract as english-only/boundary-check. NOT a required check
   # yet (branch protection stays at english-only/boundary-check/factory-tests): there's no
-  # product code for it to gate on until EVP3. BASE_SHA is only meaningful on a pull_request
-  # event; on a direct push to main it's left empty, and both gates' fail-closed design
-  # already treats that as "check unconditionally", not "skip".
+  # product code for it to gate on until EVP3. BASE_SHA is the PR's base commit on a
+  # pull_request event, or the pre-push commit (github.event.before) on a direct push to
+  # main — never left empty on either event, since an empty BASE_SHA falls back to
+  # unconditional mode and would fail every push against the still-empty project/ skeleton,
+  # not "exit 0 on the empty skeleton" as intended. `fetch-depth: 0` so that diff has real
+  # history to compare against.
   contract-gates:
     name: contract-gates
     runs-on: ubuntu-latest
@@ -62,10 +65,10 @@ jobs:
       - run: npm ci
       - run: node .github/scripts/gate-design-md.mjs
         env:
-          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
       - run: node .github/scripts/gate-contracts.mjs
         env:
-          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
 
   # Deterministic, cheap, and the single place product jobs (lint/test/build of app/) will
   # attach to once a profile exists. `app/` today only carries its own README.md and the
