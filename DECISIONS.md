@@ -120,3 +120,35 @@ bar ("harness FULLY GREEN locally and in CI on the empty skeleton"). Skipping th
 instead of porting them would silently drop real coverage the moment a product does exist,
 since nobody would be prompted to write them then. Self-skipping keeps the test present,
 honest about not applying yet, and automatic to activate — no second porting pass required.
+
+---
+
+## D-005 — Redesign the language gate from "no-Portuguese" to "English-only" (retroactive, S1.1)
+
+**Date:** 2026-08-17 (decided during port session S1.1; recorded here retroactively during
+the S7 audit-fixes session, which found the decision was never written down)
+**Status:** accepted
+
+The gate that used to be framed as "no-Portuguese" is redesigned as "English-only", and
+implemented as `.github/scripts/english-only.mjs` (renamed from an earlier
+"no-portuguese" framing) with two detection layers:
+
+- **Layer A (generic):** any Unicode letter outside `A-Za-z` is flagged. Catches accented
+  or non-Latin scripts (Portuguese, Spanish, French, German, and anything else) without
+  knowing the language in advance.
+- **Layer B (origin-specific):** a curated Portuguese stopword list, matched as whole
+  words, case-insensitive — because Layer A is blind to unaccented Portuguese words that
+  are also valid English-adjacent letter sequences (common short connectives and verb
+  forms with no diacritics).
+- **One shared allowlist** (`english-only-allowlist.json`) for cited proper names, applied
+  to both layers.
+- **Coverage:** `CLAUDE.md`, `DECISIONS.md`, `.claude/`, `.github/`, `factory/` — never
+  `project/` or `app/`, which hold product content out of scope by design.
+
+**Why:** the core's actual requirement is "English-only" (R-EN), not "anti-Portuguese".
+Portuguese is only the origin language this core was ported from — a historical fact about
+where the material came from, not a property the gate should be named after. Framing the
+gate as English-only with Portuguese as Layer B's origin-specific extension makes the
+scope correct today and keeps the door open for a fork with different contributors to swap
+Layer B's wordlist (or add a Layer C) for its own origin language, without renaming or
+reframing the gate itself.
