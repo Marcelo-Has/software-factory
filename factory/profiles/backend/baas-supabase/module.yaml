@@ -1,0 +1,48 @@
+# module.yaml — backend/baas-supabase
+#
+# Schema: factory/profiles/PROFILES.md §2. Status: complete (contract) — the pilot backend
+# module. "Complete" here means every field is filled per the D3 contract this session fixes,
+# including `behaviors` (DECISIONS.md D-007/D-3.3); the EXECUTABLE harness that actually runs
+# the mirrored behavior tests in CI is EVP3 (PROFILES.md §4, §6) — not a gap in this manifest.
+
+name: baas-supabase
+dimension: backend
+status: complete
+
+app_layout:
+  - app/api/                       # custom server-side logic only: edge functions (webhook
+                                    # handlers, anything RLS + the auto-generated REST/GraphQL
+                                    # layer can't express). Ordinary CRUD goes straight from
+                                    # app/web/ through the Supabase client SDK — this module
+                                    # does NOT scaffold a conventional REST server.
+
+scaffold:
+  - "supabase init (creates supabase/ at the repo root: migrations/, functions/)"
+  - "supabase migration new <name> per DATA-MODEL.md table, including its row-level-security policy"
+  - "supabase functions new <name> under supabase/functions/ for each custom edge function (e.g. a payment webhook handler) — mirrored under app/api/ per app_layout above for this repo's own source-of-truth convention"
+  - "npm install --save-dev vitest, plus this module's mock-first HTTP interception library (see behaviors.mock)"
+
+commands:
+  lint: "npx eslint app/api"                       # no framework-specific selector needed yet — plain TypeScript, no *.svelte/*.html equivalent on this side
+  test: "npx vitest run app/api"                    # unit tests AND the DP-3 behaviors-mirror tests (see behaviors below) share this command
+  build: "supabase functions deploy --dry-run"      # validates every edge function bundles cleanly; the real deploy is a release-time step, not this command
+  e2e: null                                          # not applicable — this module owns no UI; end-to-end coverage lives in the paired frontend module's e2e command
+
+screenshot:
+  method: null                     # not applicable — a backend module owns no UI
+  preview_adapter: null            # not applicable — see the paired deploy module for the preview URL this product's screenshots use
+
+deploy:
+  supabase:
+    migrations: "supabase db push (applies supabase/migrations/ to the linked project)"
+    edge_functions: "supabase functions deploy (per function, or --all)"
+  netlify: "not applicable directly — Supabase is deployed independently of the frontend's Netlify site; the two are linked only by the frontend's Supabase client config (project URL + anon key), never by netlify.toml"
+
+gate_adaptations:
+  generic_gate_note: "gate-contracts.mjs (D-3.2, built S4) is already product-agnostic — it reads project/docs/contracts/**, not app/api/** — so this module supplies no additional adaptation to it. No lint-antipatterns.mjs-equivalent selector exists yet for this side; app/api/ has no framework-specific antipattern gate today."
+
+behaviors:
+  applicable: true
+  runner: vitest                   # fixed for the Node family — PROFILES.md §4, not re-decided here
+  mapping: "app/api/tests/behaviors/<feature>.test.ts mirrors project/docs/behaviors/<feature>.feature, one file per feature area; every scenario appears as a grep-verifiable @scenario:<slug> comment"
+  mock: "HTTP interception in-process for outbound calls to the payment/email/etc. provider; a webhook scenario (@integration) is exercised by invoking the edge-function handler directly with a synthetic payload, never by calling a real Supabase-hosted URL; @duplicate re-sends the same synthetic event id and asserts no second effect; row-level-security policy behavior is exercised by unit-testing the handler against a stubbed Supabase client response, not a running Postgres instance — a real RLS-against-real-Postgres smoke test is the opt-in sandbox path (PROFILES.md §4), never the default here"

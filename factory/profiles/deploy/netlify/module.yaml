@@ -1,0 +1,41 @@
+# module.yaml — deploy/netlify
+#
+# Schema: factory/profiles/PROFILES.md §2. Status: complete — the pilot deploy module,
+# paired with frontend/sveltekit in the pilot composition.
+
+name: netlify
+dimension: deploy
+status: complete
+
+app_layout: []                     # a deploy module never owns an app/ subpath — it consumes
+                                    # another module's build output
+
+scaffold:
+  - "add a netlify.toml at the repo root, base = the frontend module's app_layout root (e.g. app/web), publish = that module's build output dir"
+  - "connect the repo to a Netlify site (owner action, outside this repo's tracked history — no site id or token is ever committed)"
+  - "enable deploy previews for pull requests (Netlify's default for a connected Git repo)"
+
+commands:
+  lint: null                       # not applicable — a deploy module runs no lint of its own
+  test: null                       # not applicable
+  build: null                      # not applicable — build is the paired frontend/backend module's command
+  e2e: null                        # not applicable
+
+screenshot:
+  method: null                     # not applicable — this module doesn't capture screenshots, it publishes what other modules capture against
+  preview_adapter: netlify         # this module names itself: its own name IS the adapter value other modules' screenshot.preview_adapter points at
+
+deploy:
+  netlify:
+    base: "[TO FILL IN per product — the paired frontend/backend module's app_layout root]"
+    publish: "[TO FILL IN per product — that module's build output dir]"
+    deploy_preview: true
+
+gate_adaptations:
+  preview_url_adapter: ".github/scripts/preview-url.mjs's netlifyAdapter (validateNetlifyUrl, fromCommitStatus, fromBotComment) — the only implemented adapter in the core today"
+
+behaviors:
+  applicable: false                # a deploy module never owns an API/webhook handler
+  runner: null
+  mapping: null
+  mock: null
