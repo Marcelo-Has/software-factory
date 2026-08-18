@@ -22,6 +22,7 @@
 | [`mobile.md`](mobile.md) | Mobile surface (a platform modifier) | Skeleton |
 | [`editorial.md`](editorial.md) | Reading surface, long-form text | Skeleton |
 | [`data-heavy.md`](data-heavy.md) | Large-volume analysis and exploration | Skeleton |
+| [`external-integration.md`](external-integration.md) | External integration (a DP-3 logical/integration-axis modifier, DECISIONS.md D-007) | **Complete** — cross-cutting |
 
 **Skeleton** means: the category has a place and a name, the obvious emphases are noted, and
 the list of what's still undecided is written down. A skeleton is **not authority** — until it
@@ -55,6 +56,14 @@ Two boundary notes:
 
 A category without a playbook is a normal situation, not a gap to fill preemptively: a
 playbook is born from a category's first real project, not written ahead of time.
+
+**`external-integration.md` is a different kind of modifier — a different axis, not a third
+boundary note above.** This table and the "declares its category" mechanism are all DP-2 (the
+visual axis, `DESIGN.md` §0). `external-integration.md` belongs to DP-3 (the logical/
+integration axis, DECISIONS.md D-007) and is never selected through `DESIGN.md` §0 at all —
+it applies automatically the moment `SPEC.md` marks any feature as crossing a system
+boundary, independent of and combinable with whichever DP-2 category (and `mobile.md`) also
+applies. See `external-integration.md` itself for how the two axes meet.
 
 ---
 
