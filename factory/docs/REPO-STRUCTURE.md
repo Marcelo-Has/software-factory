@@ -30,7 +30,7 @@ See [`factory/README.md`](../README.md) for the full contract. Layout:
 |---|---|
 | `factory/docs/` | The factory's own documentation: `FACTORY.md` (choreography), `AUTONOMY.md` (Decision Gate framework), `CRAFT-PRINCIPLES.md`, `DESIGN-CRITIC-RUBRIC.md`, `SKILL-ROUTER.md`, `INVENTORY.md` (this repo's own baseline photo), `playbooks/` (per-product-shape guidance). |
 | `factory/templates/` | Blank templates instantiated into `project/` when a product is bootstrapped (`DESIGN-template.md`, `ROADMAP-template.md`, `BRAND-ASSETS-template.md`, `VARIETY-REGISTRY-template.md`). |
-| `factory/profiles/` | Stack-specific raw material (e.g. `frontend/sveltekit/`'s lint config) — not yet a formal profile-module contract; that formalization is EVP2. |
+| `factory/profiles/` | The profile-module contract (`PROFILES.md`, DECISIONS.md D-010): `<dimension>/<module>/module.yaml` + `README.md`, one module per `frontend`/`backend`/`data-auth`/`deploy` dimension. Ten modules — three `complete` (`frontend/sveltekit`, `backend/baas-supabase`, `deploy/netlify`), seven `skeleton`. Wiring the core's scripts to `project/state/profile.json` (the resolver) is EVP3. |
 | `factory/checklists/` | Deterministic operating checklists — ships empty in the core; see [`factory/checklists/README.md`](../checklists/README.md). |
 | `factory/bench/` | The harness: `scenarios/` (bench prompts), `rubrics.md`, `collection.md`, and `tests/` (vitest suites that prove the gate scripts actually bite). |
 

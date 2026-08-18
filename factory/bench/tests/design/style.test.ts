@@ -13,11 +13,13 @@ import { beforeAll, describe, expect, it } from 'vitest';
  * RETURNS TO GREEN. Only the first half would prove the gate complains; both together prove it
  * complains about the right thing.
  *
- * The config under test is `factory/profiles/frontend/sveltekit/stylelint.config.js` — raw
- * material for a future SvelteKit profile (see that directory's README). It is not wired into
- * any product `lint` script; only these fixtures exercise it, to prove the gate mechanism
- * bites. The final sub-test below, which lints the live product's own source, is guarded and
- * skips on the empty skeleton (no `app/web` yet) — same pattern `ci.yml` uses for product jobs.
+ * The config under test is `factory/profiles/frontend/sveltekit/stylelint.config.js` — the
+ * `frontend/sveltekit` profile module's `gate_adaptations` (DECISIONS.md D-010, see
+ * `factory/profiles/PROFILES.md`). It is not wired into any product `lint` script yet — that
+ * resolver is EVP3 (`PROFILES.md` §6); only these fixtures exercise it here, to prove the gate
+ * mechanism bites. The final sub-test below, which lints the live product's own source, is
+ * guarded and skips on the empty skeleton (no `app/web` yet) — same pattern `ci.yml` uses for
+ * product jobs.
  */
 
 const FIXTURES = 'factory/bench/tests/design/fixtures';

@@ -326,3 +326,71 @@ already named for role execution, here applied to document shape instead. Reusin
 `gate-design-md.mjs`'s status parser as a shared function, rather than writing a second parser
 for the six new artifact kinds, keeps that one piece of logic singular instead of six ways to
 drift out of sync with each other.
+
+---
+
+## D-010 — The profile-module contract, and the fixed Node-family behaviors mapping
+
+**Date:** 2026-08-18
+**Status:** accepted
+
+`factory/profiles/` stops being stack-specific raw material (D-004's port of
+`stylelint.config.js`, with no manifest and no directory contract) and becomes a formal
+**module** system, documented in `factory/profiles/PROFILES.md` (which replaces
+`factory/profiles/README.md`):
+
+- **Shape.** `factory/profiles/<dimension>/<module>/`, one `module.yaml` manifest plus a
+  `README.md` per module. Four dimensions, fixed: `frontend`, `backend`, `data-auth`,
+  `deploy`.
+- **One schema for every module**, regardless of dimension or maturity: `name`, `dimension`,
+  `status` (`complete` \| `skeleton`), `app_layout`, `scaffold`, `commands` (`lint`, `test`,
+  `build`, `e2e`), `screenshot` (`method`, `preview_adapter`), `deploy`, `gate_adaptations`,
+  and — DP-3 ([D-007](#d-007--the-dp-3-axis-logicalintegration-contracts-symmetric-to-the-visual-axis)) —
+  `behaviors` (`runner`, `mapping`, `mock`). A field that doesn't apply to a given module is an
+  explicit `null` with a reason in that module's `README.md`, not an omission — the same
+  "declared hole, not a forgotten one" convention `screens.yaml`'s `areas_without_screens` and
+  `integrations.yaml`'s empty list already use.
+- **The Node-family `behaviors` mapping is fixed, not re-decided per module:** runner =
+  `vitest`, mapping = feature-mirror (`project/docs/behaviors/<feature>.feature` ↔
+  `app/api/tests/behaviors/<feature>.test.ts`, every scenario present as a grep-verifiable
+  `@scenario:<slug>` comment), no `cucumber` dependency — the Gherkin file is intent and
+  oracle, the mirrored test is the execution. Mock strategy is hermetic and mock-first: no live
+  network call, no real secret, in-process interception (never a spun-up local service); a real
+  sandbox smoke test against a live provider stays opt-in per profile, never the default — the
+  same closed decision D-007 already fixed for the DP-3 axis generally, restated here as the
+  concrete module-level contract.
+- **Active composition is a D3 decision, never D0.** `/define-architecture` (built in a later
+  session) reads this registry and recommends one module per dimension with a stated reason;
+  the owner accepts or overrides each one; both the recommendation and the owner's answer are
+  recorded as an ADR in `ARCHITECTURE.md` §2, and the outcome alone is mirrored into
+  `project/state/profile.json` (one module name per dimension).
+- **Ten modules, three of them `complete`:** `frontend/sveltekit` (absorbs the D-004
+  `stylelint.config.js`), `deploy/netlify` (formalizes the already-working `preview-url.mjs`
+  adapter as this module's `gate_adaptations`), and `backend/baas-supabase` (contract-complete
+  including a filled `behaviors` block — the reference instance of the Node-family mapping
+  above). Seven are `skeleton`: `frontend/nextjs`, `backend/baas-firebase`,
+  `backend/node-service`, `data-auth/baas`, `data-auth/postgres`, `deploy/vercel`,
+  `deploy/cloud-run` — every mandatory field present, genuinely undecided ones marked
+  `[TO FILL IN — see README]`, the module's own `README.md` naming exactly what's missing. Same
+  "skeleton is not authority, matures with the first real use, in its own issue" semantics
+  `factory/docs/playbooks/README.md` already uses for a playbook skeleton.
+- **`data-auth/baas` is a derived record, not an independent scaffold.** A BaaS backend module
+  bundles its own data store and auth provider — there is no independent data-auth decision to
+  make once it's chosen, only one to record, so `profile.json` still resolves all four
+  dimensions. `data-auth/postgres`, paired with `backend/node-service`, is the genuine
+  independent case.
+- **Wiring the core's scripts to read `project/state/profile.json` — the resolver — is
+  explicitly EVP3.** This session fixes the contract and every module's declaration; it does
+  not make `.github/workflows/` or `.github/scripts/` read a single `module.yaml` field, and it
+  does not build the harness that executes the `behaviors` contract in CI.
+
+**Why:** `factory/profiles/` had accumulated one real artifact (a ported lint config) with no
+system around it — no way to say what a "profile" is, how a product picks one, or where a
+second stack's equivalent pieces would even go. Left unformalized, the moment a second
+frontend or backend stack showed up it would have had to invent its own ad hoc shape, and
+`/define-architecture` (S6) would have had no registry to read a recommendation from. Fixing
+the schema once, applying it uniformly across all ten modules including the seven skeletons,
+and fixing the Node-family `behaviors` mapping as a closed decision rather than a per-module
+choice, keeps this the same kind of single, non-drifting contract [D-002](#d-002--dp-5-single-source-of-truth-per-role)
+and [D-009](#d-009--definition-phase-artifact-conventions-status-header-stable-ids-schemas)
+already established for roles and for Definition-phase documents.

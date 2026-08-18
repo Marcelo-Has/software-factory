@@ -1,0 +1,46 @@
+# module.yaml — frontend/sveltekit
+#
+# Schema: factory/profiles/PROFILES.md §2. Status: complete — the pilot frontend module
+# (Ledgerline's stack, factory/templates/examples/ledgerline/ARCHITECTURE.md §2).
+
+name: sveltekit
+dimension: frontend
+status: complete
+
+app_layout:
+  - app/web/                       # the SvelteKit project root
+
+scaffold:
+  - "npm create svelte@latest app/web -- --template skeleton --types typescript"
+  - "cd app/web && npm install"
+  - "cd app/web && npm install --save-dev stylelint postcss-html"
+  - "copy this module's stylelint.config.js to app/web/stylelint.config.js (or reference it directly — see gate_adaptations)"
+  - "copy the approved project/design/tokens.css into app/web/src/lib/styles/tokens.css (the one FILE EXCEPTION the stylelint config allows, see stylelint.config.js's own header)"
+
+commands:
+  lint: "npx stylelint 'app/web/src/**/*.{css,svelte}'"   # this module's stylelint.config.js; eslint/svelte-check are scaffold defaults, not this gate's concern
+  test: "npx vitest run"                           # unit tests, and — once EVP3's harness lands — the behaviors-mirror tests if this product's backend is also Node-family
+  build: "npm run build"
+  e2e: "npx playwright test"
+
+screenshot:
+  method: "playwright — one shot per project/docs/screens.yaml route x viewport, per .github/scripts/ui-routes.mjs's route/viewport source of truth"
+  preview_adapter: netlify           # this module composes with deploy/netlify in the pilot; a product overriding to deploy/vercel needs that module past skeleton first
+
+deploy:
+  netlify:
+    base: app/web
+    publish: app/web/build
+  vercel: "not applicable in the pilot — deploy/vercel is a skeleton; a rootDirectory: app/web setting is the expected shape once it matures"
+
+gate_adaptations:
+  stylelint_config: factory/profiles/frontend/sveltekit/stylelint.config.js
+  lint_antipatterns_selectors: ".github/scripts/lint-antipatterns.mjs's \"---- profile extension point ----\" block (EXTENSIONS, IGNORED_DIRS, FRAMEWORK_SCROLL_DIRECTIVE_SOURCE) — SvelteKit's .svelte/.css/.html and its on:scroll directive"
+
+behaviors:
+  applicable: false                # a frontend module never owns an API/webhook handler; DP-3
+                                    # scenario coverage lives against the backend module's
+                                    # app_layout (see backend/baas-supabase/module.yaml)
+  runner: null
+  mapping: null
+  mock: null

@@ -1,0 +1,37 @@
+# module.yaml — backend/baas-firebase
+#
+# Schema: factory/profiles/PROFILES.md §2. Status: skeleton — see this directory's README for
+# what's missing before a product can compose this module.
+
+name: baas-firebase
+dimension: backend
+status: skeleton
+
+app_layout:
+  - app/api/                       # Cloud Functions source, mirroring backend/baas-supabase's
+                                    # convention: custom logic only, not a conventional REST server
+
+scaffold:
+  - "[TO FILL IN — see README: firebase init, which products (Firestore vs. Realtime Database), which Functions runtime]"
+
+commands:
+  lint: "[TO FILL IN]"
+  test: "[TO FILL IN]"
+  build: "[TO FILL IN — likely: firebase deploy --only functions --dry-run, mirroring baas-supabase's validation-without-shipping shape]"
+  e2e: null
+
+screenshot:
+  method: null
+  preview_adapter: null
+
+deploy:
+  firebase: "[TO FILL IN — Cloud Functions + Firestore rules deploy, mirroring backend/baas-supabase's separation from the frontend's own deploy module]"
+
+gate_adaptations:
+  generic_gate_note: "[TO FILL IN — confirm gate-contracts.mjs's product-agnostic reach (project/docs/contracts/**) still needs no adaptation here, same as backend/baas-supabase]"
+
+behaviors:
+  applicable: true                 # a Firebase backend does own webhook/callable-function handlers
+  runner: "[TO FILL IN — the Node family's fixed vitest/feature-mirror answer (PROFILES.md §4) applies if Cloud Functions runs on Node, which is the common case; confirm before inheriting it wholesale]"
+  mapping: "[TO FILL IN — see backend/baas-supabase for the shape to imitate: app/api/tests/behaviors/<feature>.test.ts mirroring project/docs/behaviors/<feature>.feature]"
+  mock: "[TO FILL IN — PROFILES.md §4's rule: hermetic means in-process interception, not a spun-up service — so this is NOT Firebase's local emulator suite (that's a running service, the sandbox-smoke shape, opt-in only). The actual in-process stub strategy for the Firebase Admin SDK's calls hasn't been designed yet; see backend/baas-supabase/module.yaml for the shape a Node-family module fills in]"

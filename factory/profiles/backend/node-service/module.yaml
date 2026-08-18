@@ -1,0 +1,40 @@
+# module.yaml — backend/node-service
+#
+# Schema: factory/profiles/PROFILES.md §2. Status: skeleton — see this directory's README for
+# what's missing before a product can compose this module.
+
+name: node-service
+dimension: backend
+status: skeleton
+
+app_layout:
+  - app/api/                       # a conventional server — unlike the BaaS backend modules,
+                                    # this one DOES own the full REST/RPC surface, not just
+                                    # custom edge-function logic
+
+scaffold:
+  - "[TO FILL IN — see README: which Node framework this module standardizes on (Fastify, Express, Hono, ...), and how it pairs with data-auth/postgres]"
+
+commands:
+  lint: "[TO FILL IN]"
+  test: "[TO FILL IN — likely: npx vitest run app/api, same command shape as backend/baas-supabase]"
+  build: "[TO FILL IN]"
+  e2e: null
+
+screenshot:
+  method: null
+  preview_adapter: null
+
+deploy:
+  cloud-run: "[TO FILL IN — this module's natural pairing with deploy/cloud-run, itself a skeleton]"
+
+gate_adaptations:
+  generic_gate_note: "[TO FILL IN — confirm gate-contracts.mjs needs no adaptation here, same as the BaaS backend modules]"
+
+behaviors:
+  applicable: true
+  runner: vitest                   # fixed for the Node family — PROFILES.md §4; this module
+                                    # IS the Node family's most literal case, so this field is
+                                    # the one already-settled part of an otherwise skeleton module
+  mapping: "app/api/tests/behaviors/<feature>.test.ts mirrors project/docs/behaviors/<feature>.feature — same convention as backend/baas-supabase, PROFILES.md §4"
+  mock: "[TO FILL IN — the hermetic HTTP-interception strategy is the same shape as backend/baas-supabase's, but this module owns its own auth/session layer (paired with data-auth/postgres) instead of a BaaS provider's, so the mock surface differs and hasn't been designed yet]"
