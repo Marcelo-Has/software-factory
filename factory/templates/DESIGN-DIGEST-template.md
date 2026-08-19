@@ -58,6 +58,7 @@ brevity.
 | --- | --- |
 | `surface` | `[TO FILL IN]` |
 | `foreground` | `[TO FILL IN]` |
+| `muted` | `[TO FILL IN]` |
 | `accent` | `[TO FILL IN]` |
 | `destructive` / `success` / `warning` | `[TO FILL IN]` |
 | `border` / `focus` | `[TO FILL IN]` |
