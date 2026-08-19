@@ -52,10 +52,77 @@ const CORE_ROOT_FILES = new Set(['claude.md', 'decisions.md']);
 // simplest, most auditable rule: one basename-membership check, no path-shape special-casing.
 const EXEMPT_BASENAMES = new Set(['README.md', '.gitkeep']);
 
-// Best-effort Bash heuristic (see header). Two independent conditions, both required, not
-// required to be adjacent in the command string.
-const WRITE_OP_RE = /(>{1,2})|\b(tee|cp|mv|rm)\b|sed\s+-i\b/;
-const CORE_MENTION_RE = /factory\/|\.claude\/|\.github\/|\bCLAUDE\.md\b|\bDECISIONS\.md\b/i;
+// Best-effort Bash heuristic (see header). Token-aware: a command only flags when a WRITE
+// OPERATION'S OWN TARGET is a core path, not merely when a write-op token and a core-path
+// mention both appear anywhere in the string (that coarser co-occurrence rule false-positived
+// on ordinary read-only/non-core-targeting commands — see F-2 in the S8 dry-run friction log,
+// e.g. `node .github/scripts/gate-definition-done.mjs 2>&1`, whose own `2>&1` isn't a path
+// write at all).
+const CORE_PATH_TOKEN_RE = /^['"]?(factory\/|\.claude\/|\.github\/|CLAUDE\.md|DECISIONS\.md)/i;
+
+/** `true` if `token` (a single Bash word, possibly quoted) names a core path. */
+function isCorePathToken(token) {
+	if (typeof token !== 'string' || token.length === 0) return false;
+	return CORE_PATH_TOKEN_RE.test(token.replace(/^['"]/, '').replace(/['"]$/, ''));
+}
+
+/** Splits a command into statement/pipeline segments on `&&`, `||`, `;`, `|`, and newlines.
+ *  Not a real shell parser — cheap and quote-naive, matching this heuristic's best-effort
+ *  posture (see header). */
+function splitStatements(command) {
+	return command.split(/&&|\|\||[|;\n]/);
+}
+
+/** Splits one statement into whitespace-separated words. */
+function words(statement) {
+	return statement.trim().split(/\s+/).filter(Boolean);
+}
+
+/** `>`/`>>` whose TARGET token is a core path. An `N>` fd prefix (`2>...`) is still scanned —
+ *  only a `&`-target (fd duplication, e.g. `2>&1`) is excluded, since that's not a path write
+ *  at all; `2>/dev/null` is excluded naturally because `/dev/null` never matches a core path. */
+function hasRedirectToCore(statement) {
+	const re = /\d*(>{1,2})\s*(\S+)/g;
+	let m;
+	while ((m = re.exec(statement)) !== null) {
+		const target = m[2];
+		if (target.startsWith('&')) continue;
+		if (isCorePathToken(target)) return true;
+	}
+	return false;
+}
+
+/** `tee` with a core-path argument (any argument — `tee` can write to several files at once). */
+function hasTeeToCore(ws) {
+	const i = ws.indexOf('tee');
+	if (i === -1) return false;
+	return ws.slice(i + 1).some((w) => !w.startsWith('-') && isCorePathToken(w));
+}
+
+/** `rm` / `sed -i` / `git rm` with a core-path argument (any argument — unlike `cp`/`mv`,
+ *  these commands don't have a distinct "destination" token). */
+function hasRmSedGitRmToCore(ws) {
+	let argsStart = -1;
+	if (ws[0] === 'rm') {
+		argsStart = 1;
+	} else if (ws[0] === 'sed' && ws.some((w) => w === '-i' || w.startsWith('-i'))) {
+		argsStart = 1;
+	} else if (ws[0] === 'git' && ws[1] === 'rm') {
+		argsStart = 2;
+	}
+	if (argsStart === -1) return false;
+	return ws.slice(argsStart).some((w) => !w.startsWith('-') && isCorePathToken(w));
+}
+
+/** `cp`/`mv` whose DESTINATION (the last non-flag path argument) is a core path — the source
+ *  is allowed to mention a core path freely (that's a read, e.g. `cp factory/templates/X
+ *  project/state/Y`). */
+function hasCpMvToCore(ws) {
+	if (ws[0] !== 'cp' && ws[0] !== 'mv') return false;
+	const pathArgs = ws.slice(1).filter((w) => !w.startsWith('-'));
+	if (pathArgs.length === 0) return false;
+	return isCorePathToken(pathArgs[pathArgs.length - 1]);
+}
 
 /** Repo-relative, forward-slash, lowercased key for classification only — never used for I/O. */
 export function toRepoRelativeKey(root, filePath) {
@@ -122,7 +189,15 @@ export function isProductMode(root) {
 /** Best-effort Bash-command heuristic — see header for why this is defense-in-depth only. */
 export function bashLooksLikeCoreWrite(command) {
 	if (typeof command !== 'string' || command.length === 0) return false;
-	return WRITE_OP_RE.test(command) && CORE_MENTION_RE.test(command);
+	for (const statement of splitStatements(command)) {
+		if (hasRedirectToCore(statement)) return true;
+		const ws = words(statement);
+		if (ws.length === 0) continue;
+		if (hasTeeToCore(ws)) return true;
+		if (hasRmSedGitRmToCore(ws)) return true;
+		if (hasCpMvToCore(ws)) return true;
+	}
+	return false;
 }
 
 function allowWithDiagnostic(reason) {
