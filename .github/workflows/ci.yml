@@ -184,3 +184,37 @@ jobs:
             echo "+ $cmd"
             eval "$cmd"
           done < "$RUNNER_TEMP/build-cmds.txt"
+
+  # The DP-3 execution half (DECISIONS.md D-013): gate-behavior-mirror.mjs checks every
+  # `.feature` scenario has a non-placeholder mirror test (coverage) before this job actually
+  # runs the active backend module's resolved `test` command, so the mirrored scenarios execute
+  # and pass/fail for real — not just get checked for existence. Hermetic and mock-first per
+  # the module's own `behaviors.mock` (no secret, no network, per DECISIONS.md D-007/D-010,
+  # closed decisions not reopened here); a real sandbox smoke test stays opt-in and unbuilt.
+  # Same `detect-app-code` gating as the other product-* jobs, and right-sizes to a no-op with
+  # a stated reason when there's no product yet or the active backend declares no behaviors.
+  product-behaviors:
+    name: product-behaviors
+    needs: detect-app-code
+    if: needs.detect-app-code.outputs.has-code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - if: hashFiles('app/web/package.json') != ''
+        run: npm ci
+        working-directory: app/web
+      - run: node .github/scripts/gate-behavior-mirror.mjs
+      - run: |
+          set -euo pipefail
+          cmd=$(node .github/scripts/gate-behavior-mirror.mjs --print-test-command)
+          if [ -z "$cmd" ]; then
+            echo "No backend behaviors test command to run (not applicable, or no product yet)."
+            exit 0
+          fi
+          echo "+ $cmd"
+          eval "$cmd"
