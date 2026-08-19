@@ -62,6 +62,14 @@ A project moves from Generation to Maintenance per phase, not all at once — th
 have an early phase in Maintenance (the factory's own scaffolding, already stable) while a
 later phase is still in Generation.
 
+A Generation-regime milestone is verified once, by a fixed bundle (DECISIONS.md D-014) before
+its PR gets a human merge: deterministic CI, the behaviors gate actually executing the
+mirrored scenarios (D-013), design-critic's dual-pass verdict against deploy-preview evidence,
+security, and verdict's acceptance-criteria judgment — never a visual-only sign-off. The human
+mirror of the bundle is `factory/checklists/milestone-verification.md`. The runner that drives
+a milestone through Generation (`generate.yml`) is a later session's build; this paragraph
+records the verification contract the runner's PRs will have to cross, not the runner itself.
+
 ## Roles and permissions
 
 | Workflow | Role | Trigger | Writes code? | Turn budget* | Guard-rail |
