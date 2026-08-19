@@ -1,0 +1,15 @@
+# Synthetic fixture screens.yaml — not a real product, used only by
+# factory/bench/tests/profiles/ui-routes-screens.test.ts. Plants exactly one violation: a
+# parameterized route with no screenshot_route.
+
+screens:
+  - id: S-note-editor
+    name: Note editor
+    area: app
+    route: /notes/:id
+    states:
+      - default
+    mockup_states:
+      - default
+
+areas_without_screens: []

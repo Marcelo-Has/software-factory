@@ -35,7 +35,15 @@ deploy:
 
 gate_adaptations:
   stylelint_config: factory/profiles/frontend/sveltekit/stylelint.config.js
-  lint_antipatterns_selectors: ".github/scripts/lint-antipatterns.mjs's \"---- profile extension point ----\" block (EXTENSIONS, IGNORED_DIRS, FRAMEWORK_SCROLL_DIRECTIVE_SOURCE) — SvelteKit's .svelte/.css/.html and its on:scroll directive"
+  # Structured (DECISIONS.md D-012), not prose: profile-resolve.mjs's gateAdaptation() hands
+  # this straight to lint-antipatterns.mjs's "profile extension point" block. Same values the
+  # script hardcodes as its no-profile fallback — SvelteKit's .svelte/.css/.html and its
+  # on:scroll directive.
+  lint_antipatterns_selectors:
+    roots: ["app/web/src"]
+    extensions: [".svelte", ".css", ".html"]
+    ignored_dirs: ["node_modules", ".svelte-kit", "build", "dist", ".git"]
+    framework_scroll_directive_source: "on:scroll"
 
 behaviors:
   applicable: false                # a frontend module never owns an API/webhook handler; DP-3

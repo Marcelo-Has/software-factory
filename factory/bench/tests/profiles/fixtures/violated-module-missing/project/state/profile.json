@@ -1,0 +1,6 @@
+{
+  "frontend": "demo-fe",
+  "backend": "demo-be",
+  "data-auth": "demo-da",
+  "deploy": "does-not-exist"
+}

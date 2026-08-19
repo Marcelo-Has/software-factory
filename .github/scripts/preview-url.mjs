@@ -10,6 +10,13 @@
  * provider means adding a new set of source functions and a new validator — the workflow
  * calling this script doesn't change.
  *
+ * ADAPTER SELECTION (DECISIONS.md D-012). A deploy module names itself as the adapter
+ * identifier (`deploy/netlify/module.yaml`'s own comment: "its own name IS the adapter value
+ * other modules' `screenshot.preview_adapter` points at") — no `project/state/profile.json`
+ * (this generic core today) picks `netlifyAdapter` unchanged; a profile present picks the
+ * adapter by `readProfile(cwd).deploy`'s module name. Only `netlify` is implemented: any other
+ * resolved deploy module exits 1 naming the gap, never silently falling back to Netlify.
+ *
  * FAIL-CLOSED: once the timeout is exhausted with no valid URL, the script EXITS 1. There is
  * no "proceed without evidence" mode — a missing screenshot is exactly what rejects the PR
  * outright at the `design-critic` gate, and a resolver that stays quiet when it doesn't know
@@ -27,6 +34,7 @@
  * Output: the URL on `stdout` and, if `GITHUB_OUTPUT` exists, `url=<URL>` in it.
  */
 import { appendFileSync } from 'node:fs';
+import { moduleManifest, readProfile } from './profile-resolve.mjs';
 
 const API = process.env.GITHUB_API_URL || 'https://api.github.com';
 const REPO = (process.env.GITHUB_REPOSITORY || '').trim();
@@ -172,16 +180,45 @@ const netlifyAdapter = {
 	]
 };
 
+/** @type {Record<string, PreviewAdapter>} */
+const ADAPTERS = { netlify: netlifyAdapter };
+
+/**
+ * Picks the adapter by the active `deploy` module's own name (DECISIONS.md D-012). No profile
+ * -> `netlifyAdapter` unchanged. A profile present but naming a deploy module this script
+ * doesn't implement -> `null` (the caller reports the gap and exits 1, never silently falling
+ * back to Netlify).
+ * @param {string} cwd
+ * @returns {PreviewAdapter | null}
+ */
+function selectAdapter(cwd) {
+	if (readProfile(cwd) === null) return netlifyAdapter;
+	const manifest = moduleManifest(cwd, 'deploy');
+	return ADAPTERS[manifest.name] ?? null;
+}
+
 // ---- entry point ------------------------------------------------------------------------
 
-async function main() {
+async function main(cwd = process.cwd()) {
 	const shortcut = validateNetlifyUrl(process.env.PREVIEW_URL || '');
 	if (shortcut !== null) {
 		console.log(`URL supplied via \`PREVIEW_URL\`: ${shortcut}`);
 		return publish(shortcut);
 	}
 
-	const found = await findPreviewUrl(netlifyAdapter, {
+	const adapter = selectAdapter(cwd);
+	if (adapter === null) {
+		const deployModule = readProfile(cwd).deploy;
+		console.log(
+			`::error::project/state/profile.json's deploy module is "${deployModule}", but ` +
+				'preview-url.mjs implements no adapter for it — only "netlify" is implemented ' +
+				'(DECISIONS.md D-012). Never falling back to Netlify silently for a different deploy ' +
+				'module.'
+		);
+		return 1;
+	}
+
+	const found = await findPreviewUrl(adapter, {
 		repo: REPO,
 		sha: SHA,
 		prNumber: PR,
@@ -191,7 +228,7 @@ async function main() {
 	if (found !== null) return publish(found);
 
 	console.log(
-		`::error::Could not discover the ${netlifyAdapter.name} deploy-preview URL for ` +
+		`::error::Could not discover the ${adapter.name} deploy-preview URL for ` +
 			`${SHA.slice(0, 8) || 'this commit'} within ${TIMEOUT / 1000}s. Without a preview there ` +
 			'is no screenshot, and without a screenshot there is no Visual Verification Loop ' +
 			'evidence — `design-critic` rejects the PR outright. Check the PR\'s deploy preview ' +

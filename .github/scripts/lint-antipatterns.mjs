@@ -28,8 +28,10 @@
  * deterministic gate that rejects the correct thing is worse than a gate that doesn't run,
  * because it teaches people to ignore it.
  *
- * NO DEPENDENCY, like the rest of `.github/scripts/`: only `node:fs`. Runs via `npm run
- * lint` and the `ci` job in `ci.yml`.
+ * `node:fs` plus `./profile-resolve.mjs` (DECISIONS.md D-012) — no npm package of its own.
+ * Runs only from `ci.yml`'s `product-lint` job, which runs `npm ci` first, so
+ * `profile-resolve.mjs`'s own `yaml` dependency is available; unlike `ui-routes.mjs`, this
+ * script is never reached by a job that skips `npm ci`.
  *
  * Usage:
  *     node .github/scripts/lint-antipatterns.mjs                  # scans the UI paths
@@ -39,17 +41,49 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { gateAdaptation, readProfile } from './profile-resolve.mjs';
 
-// ---- profile extension point: framework-specific selectors ----
-// SvelteKit is the first (and, in this generic core, only) profile wired here. A different
-// profile (React, Vue, ...) swaps this block: where UI source lives, which extensions count,
-// which build directories to ignore, and the framework's own event-directive syntax used by
-// the scroll-hijack detector (item 53) below.
-const ROOTS = ['app/web/src'];
-const EXTENSIONS = ['.svelte', '.css', '.html'];
-const IGNORED_DIRS = new Set(['node_modules', '.svelte-kit', 'build', 'dist', '.git']);
-/** SvelteKit's `on:scroll` event directive — the framework-specific half of item 53. */
-const FRAMEWORK_SCROLL_DIRECTIVE_SOURCE = 'on:scroll';
+// ---- profile extension point: framework-specific selectors (DECISIONS.md D-012) ----
+// SvelteKit is the first (and, in this generic core, only) profile wired here. Where UI
+// source lives, which extensions count, which build directories to ignore, and the
+// framework's own event-directive syntax used by the scroll-hijack detector (item 53) below
+// resolve through the profile resolver when a product's `project/state/profile.json` exists
+// (via `frontend/sveltekit/module.yaml`'s `gate_adaptations.lint_antipatterns_selectors`); no
+// profile (this generic core today) falls back to the SvelteKit values below unchanged.
+const DEFAULT_EXTENSION_POINT = {
+	roots: ['app/web/src'],
+	extensions: ['.svelte', '.css', '.html'],
+	ignoredDirs: ['node_modules', '.svelte-kit', 'build', 'dist', '.git'],
+	/** SvelteKit's `on:scroll` event directive — the framework-specific half of item 53. */
+	frameworkScrollDirectiveSource: 'on:scroll'
+};
+
+/**
+ * @param {string} [cwd]
+ * @returns {{ roots: string[], extensions: string[], ignoredDirs: Set<string>, frameworkScrollDirectiveSource: string }}
+ */
+export function resolveExtensionPoint(cwd = process.cwd()) {
+	if (readProfile(cwd) === null) {
+		return { ...DEFAULT_EXTENSION_POINT, ignoredDirs: new Set(DEFAULT_EXTENSION_POINT.ignoredDirs) };
+	}
+	const adapted = gateAdaptation(cwd, 'lint_antipatterns_selectors');
+	if (adapted === null) {
+		return { ...DEFAULT_EXTENSION_POINT, ignoredDirs: new Set(DEFAULT_EXTENSION_POINT.ignoredDirs) };
+	}
+	return {
+		roots: adapted.roots ?? DEFAULT_EXTENSION_POINT.roots,
+		extensions: adapted.extensions ?? DEFAULT_EXTENSION_POINT.extensions,
+		ignoredDirs: new Set(adapted.ignored_dirs ?? DEFAULT_EXTENSION_POINT.ignoredDirs),
+		frameworkScrollDirectiveSource:
+			adapted.framework_scroll_directive_source ?? DEFAULT_EXTENSION_POINT.frameworkScrollDirectiveSource
+	};
+}
+
+const EXTENSION_POINT = resolveExtensionPoint();
+const ROOTS = EXTENSION_POINT.roots;
+const EXTENSIONS = EXTENSION_POINT.extensions;
+const IGNORED_DIRS = EXTENSION_POINT.ignoredDirs;
+const FRAMEWORK_SCROLL_DIRECTIVE_SOURCE = EXTENSION_POINT.frameworkScrollDirectiveSource;
 // ---- end profile extension point ----
 
 /**

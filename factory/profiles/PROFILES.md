@@ -1,11 +1,11 @@
 # PROFILES.md — the profile-module contract
 
-> **Status: contract fixed (DECISIONS.md D-010).** This document replaces
-> `factory/profiles/README.md`'s raw-material framing — see §7 for that history. What's fixed
-> here is the module **contract**: shape, schema, and how a product's active composition gets
-> chosen and recorded. **Wiring the core's scripts to read `project/state/profile.json` (the
-> resolver) is EVP3** — see §6. Nothing in `.github/workflows/` or `.github/scripts/` reads a
-> module's `module.yaml` yet.
+> **Status: contract fixed (DECISIONS.md D-010), resolver wired (DECISIONS.md D-012).** This
+> document replaces `factory/profiles/README.md`'s raw-material framing — see §7 for that
+> history. §2-§5 fix the module **contract**: shape, schema, and how a product's active
+> composition gets chosen and recorded. `.github/scripts/profile-resolve.mjs` reads
+> `project/state/profile.json` and each active module's `module.yaml` — see §6 for exactly
+> what's wired through it today and what still isn't.
 
 ---
 
@@ -198,24 +198,45 @@ not supplied by the backend module at all.
 
 ---
 
-## 6. What's not wired yet (EVP3)
+## 6. What's wired now, and what still isn't (DECISIONS.md D-012)
 
-Nothing under `factory/profiles/` is imported or invoked by `.github/workflows/` or
-`.github/scripts/` today. Specifically deferred to EVP3, the **resolver**:
+**Wired.** `.github/scripts/profile-resolve.mjs` is the resolver: `readProfile`/
+`moduleManifest`/`resolvedCommand`/`gateAdaptation`, fail-closed on a missing module, a
+`status: skeleton` module in a dimension `profile.json` actually composes, or a mandatory
+field absent (§1/§2/§5). Four consumers read through it:
 
-- Reading `project/state/profile.json` to pick which module's `gate_adaptations` a gate script
-  applies (e.g. which `stylelint.config.js` `lint-antipatterns.mjs`'s "profile extension point"
-  comment currently names as a manual, one-profile-at-a-time wiring point).
+- `.github/scripts/lint-antipatterns.mjs`'s "profile extension point" block resolves via
+  `gateAdaptation(cwd, 'lint_antipatterns_selectors')` when a profile exists, falling back to
+  the built-in SvelteKit values otherwise.
+- `.github/scripts/ui-routes.mjs`'s `ROUTES` derives from `project/docs/screens.yaml` (every
+  screen with a `route`, in file order; a parameterized route needs `screenshot_route` — a new
+  field, extends D-009 §3); no `screens.yaml` still falls back to the `['/']` placeholder.
+- `.github/scripts/preview-url.mjs` picks its adapter by the active `deploy` module's own name;
+  only `netlify` is implemented, any other resolved module exits 1 naming the gap.
+- `.github/workflows/ci.yml`'s `product-lint`/`product-test`/`product-build` jobs run
+  `commands.lint`/`test`/`build`, collected via `resolvedCommand`, gated on
+  `detect-app-code`'s `has-code` output exactly like the placeholder they replace.
+
+**Still not wired:**
+
 - Generating a product's actual deploy config (`netlify.toml`, a Vercel project setting, a
-  Dockerfile `COPY` line) from a module's `deploy` block.
-- Running `commands.lint`/`test`/`build`/`e2e` from CI, keyed off `profile.json`.
+  Dockerfile `COPY` line) from a module's `deploy` block — a Generation session's scaffold step
+  writes it by hand today (`generate.yml`, EVP3 later sessions), not this resolver.
+- `.github/workflows/screenshots.yml`'s and `.github/workflows/design-critic.yml`'s trigger
+  paths — both are still hardcoded to the SvelteKit pilot's paths. Static YAML can't
+  parameterize a trigger path per profile, so this can't become a resolver job. **New module
+  obligation:** a frontend module maturing past `skeleton` updates both workflows' trigger
+  paths in the same PR that matures it — documented here, not code-enforced.
 - Executing the `behaviors` contract (§4) — the harness that actually runs the mirrored
-  `.test.ts` files in CI.
+  `.test.ts` files in CI — is a separate EVP3 session (the functional gate,
+  `gate-behavior-mirror.mjs` and the `product-behaviors` job), not this resolver.
+- `commands.e2e` is resolved by `profile-resolve.mjs` like every other command, but no CI job
+  runs it yet — no workflow calls `--command e2e` today.
 
-Until then, `factory/bench/tests/design/style.test.ts` is the only thing that exercises any
-module's content — it runs real `stylelint` against `frontend/sveltekit/stylelint.config.js`
-and the harness's planted-violation fixtures, to prove the gate mechanism bites, not because
-any product `lint` script calls it yet.
+`factory/bench/tests/design/style.test.ts` still exercises `frontend/sveltekit/stylelint.config.js`
+directly (real `stylelint` against the harness's planted-violation fixtures) rather than
+through the resolver — that test proves the gate mechanism itself bites, independent of which
+product resolves to this module.
 
 ---
 

@@ -1,0 +1,34 @@
+# Synthetic fixture module — not a real profile, used only by factory/bench/tests/profiles.
+name: demo-fe
+dimension: frontend
+status: complete
+
+app_layout:
+  - app/web/
+
+scaffold:
+  - "demo scaffold step"
+
+commands:
+  lint: "echo lint-fe"
+  test: "echo test-fe"
+  build: "echo build-fe"
+  e2e: "echo e2e-fe"
+
+screenshot:
+  method: "demo method"
+  preview_adapter: demo-deploy
+
+deploy:
+  demo-deploy:
+    base: app/web
+    publish: app/web/build
+
+gate_adaptations:
+  demo_key: "demo-value"
+
+behaviors:
+  applicable: false
+  runner: null
+  mapping: null
+  mock: null
