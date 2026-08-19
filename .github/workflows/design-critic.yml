@@ -116,6 +116,12 @@ jobs:
           # Baseline of the EXPECTED divergence. Anything BEYOND this by the end of the job is
           # mutation from an unknown origin.
           git status --porcelain > "${RUNNER_TEMP}/ws-expected.txt"
+          # Compare by PATH, not by full porcelain line (GR-7): strip the two status chars and
+          # the separator (`cut -c4-`); for rename lines `old -> new`, keep the new path. A path
+          # recorded here as diverged stays EXPECTED no matter how the action's own git bootstrap
+          # restages it later.
+          cut -c4- "${RUNNER_TEMP}/ws-expected.txt" | sed -E 's/.* -> //' | sort -u \
+            > "${RUNNER_TEMP}/ws-expected-paths.txt"
           echo "::group::Workspace after restoration (expected divergence)"
           cat "${RUNNER_TEMP}/ws-expected.txt"
           echo "::endgroup::"
@@ -462,12 +468,15 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          touch "${RUNNER_TEMP}/ws-expected.txt"
+          touch "${RUNNER_TEMP}/ws-expected-paths.txt"
           git status --porcelain > "${RUNNER_TEMP}/ws-final.txt"
           echo "::group::Workspace at the end of the job"
           cat "${RUNNER_TEMP}/ws-final.txt"
           echo "::endgroup::"
-          grep -Fxv -f "${RUNNER_TEMP}/ws-expected.txt" "${RUNNER_TEMP}/ws-final.txt" \
+          # Same PATH-only normalization as the baseline, applied to the final snapshot.
+          cut -c4- "${RUNNER_TEMP}/ws-final.txt" | sed -E 's/.* -> //' | sort -u \
+            > "${RUNNER_TEMP}/ws-final-paths.txt"
+          grep -Fxv -f "${RUNNER_TEMP}/ws-expected-paths.txt" "${RUNNER_TEMP}/ws-final-paths.txt" \
             > "${RUNNER_TEMP}/ws-unexpected.txt" || true
           if [ -s "${RUNNER_TEMP}/ws-unexpected.txt" ]; then
             echo "::warning::The workspace diverged from the commit under critique beyond the config/rubric restoration. The verdict may describe the disk, not the render — see the warning in the PR comment."
@@ -508,7 +517,7 @@ jobs:
             {
               echo "> [!WARNING]"
               echo "> **The runner's workspace diverged from the commit under critique** (GR-7)."
-              echo "> These paths changed outside the config/rubric restoration ([GR-6]):"
+              echo "> These paths diverged beyond the config/rubric restoration ([GR-6]):"
               sed 's/^/> - `/; s/$/`/' "$DIVERGENCE"
               echo ">"
               echo "> The verdict below may describe the DISK, not the render. Check it against"
