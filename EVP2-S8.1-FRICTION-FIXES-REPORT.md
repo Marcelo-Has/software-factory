@@ -1,6 +1,6 @@
-# EVP2 S9 — fixing the S8 dry-run frictions: session report
+# EVP2 S8.1 — fixing the S8 dry-run frictions: session report
 
-**Session:** S9, branch `evp2/s8-1-friction-fixes`, based on `main` (not on
+**Session:** S8.1, branch `evp2/s8-1-friction-fixes`, based on `main` (not on
 `evp2/s8-dry-run-ghost`, which stays an unmerged, ghost-product evidence branch per that
 session's own instructions).
 **Scope:** fix exactly F-1..F-7 plus a template comment for F-9 from
