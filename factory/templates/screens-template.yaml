@@ -20,6 +20,14 @@ screens:
     area: "[TO FILL IN — one of: marketing | app | admin | email]"
     route: "[TO FILL IN — /path, or omit/null if this screen has no route of its own, e.g.
       a transactional email with area: email]"
+    screenshot_route:            # OPTIONAL. Required when `route` is parameterized (contains
+                                  # a `:` segment, e.g. /notes/:id) — a concrete instance
+                                  # ui-routes.mjs can actually navigate to and capture, e.g.
+                                  # screenshot_route: /notes/example. A dynamic route has no
+                                  # screenshot without a chosen concrete instance, and that
+                                  # choice belongs here, visible, not guessed by a scan —
+                                  # ui-routes.mjs fails closed on a parameterized route with no
+                                  # screenshot_route (DECISIONS.md D-012, extends D-009 §3).
     states:                      # every UI state this screen can be in. Always include
                                   # "default"; add the others this screen actually needs
                                   # (loading, empty, error, overflow, offline/degraded — per
