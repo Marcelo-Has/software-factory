@@ -92,7 +92,12 @@ function changedFiles() {
 }
 
 /**
- * Validates `DESIGN.md`'s content. Returns `{ ok: true }` or `{ ok: false, reason }`.
+ * Validates a `Status` header table's content — reused for every D0-D6 `.md` artifact, not
+ * just `DESIGN.md`, via `gate-definition-done.mjs`. Returns `{ ok: true }` or
+ * `{ ok: false, reason }` for the two violations whose wording is artifact-agnostic
+ * (missing/placeholder header), or `{ ok: false, status }` for a non-`approved` status — that
+ * one caller composes into its own message, since "why isn't `approved`" reads differently for
+ * `DESIGN.md` than for e.g. `SPEC.md` (see F-1 in the S8 dry-run friction log).
  *
  * The two invalid states aren't hypothetical: the DESIGN template is born with
  * `| **Status** | \`[TO FILL IN]\` — \`candidate\` \| \`approved\` |`, so an unedited copy of
@@ -118,10 +123,7 @@ export function validate(content) {
 	}
 	const status = field[1].trim().toLowerCase();
 	if (status !== 'approved') {
-		return {
-			ok: false,
-			reason: `is at \`Status: ${status}\`. Only \`approved\` authorizes deriving UI: the Foundation PROPOSES, the owner approves identity, at a Decision Gate.`
-		};
+		return { ok: false, status };
 	}
 	return { ok: true };
 }
@@ -158,9 +160,10 @@ function main() {
 
 	const verdict = validate(content);
 	if (!verdict.ok) {
-		console.log(
-			`::error::This PR touches interface code and \`project/design/DESIGN.md\` ${verdict.reason}`
-		);
+		const reason =
+			verdict.reason ??
+			`is at \`Status: ${verdict.status}\`. Only \`approved\` authorizes deriving UI: the Foundation PROPOSES, the owner approves identity, at a Decision Gate.`;
+		console.log(`::error::This PR touches interface code and \`project/design/DESIGN.md\` ${reason}`);
 		return 1;
 	}
 
