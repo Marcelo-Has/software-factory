@@ -1,0 +1,33 @@
+# Synthetic fixture module — not a real profile, used only by factory/bench/tests/profiles.
+name: demo-deploy
+dimension: deploy
+status: complete
+
+app_layout: []
+
+scaffold:
+  - "demo scaffold step"
+
+commands:
+  lint: null
+  test: null
+  build: null
+  e2e: null
+
+screenshot:
+  method: null
+  preview_adapter: demo-deploy
+
+deploy:
+  demo-deploy:
+    base: "[TO FILL IN per product]"
+    publish: "[TO FILL IN per product]"
+
+gate_adaptations:
+  preview_url_adapter: "demo-deploy's own adapter"
+
+behaviors:
+  applicable: false
+  runner: null
+  mapping: null
+  mock: null

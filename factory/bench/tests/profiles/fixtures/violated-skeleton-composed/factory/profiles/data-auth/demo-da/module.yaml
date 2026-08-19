@@ -1,0 +1,33 @@
+# Synthetic fixture module — not a real profile, used only by factory/bench/tests/profiles.
+# status: skeleton on purpose — this fixture proves moduleManifest() fails closed on a
+# skeleton module in a dimension profile.json actually composes.
+name: demo-da
+dimension: data-auth
+status: skeleton
+
+app_layout: []
+
+scaffold:
+  - "demo scaffold step"
+
+commands:
+  lint: null
+  test: null
+  build: null
+  e2e: null
+
+screenshot:
+  method: null
+  preview_adapter: null
+
+deploy:
+  note: "not applicable"
+
+gate_adaptations:
+  generic_gate_note: "not applicable"
+
+behaviors:
+  applicable: false
+  runner: null
+  mapping: null
+  mock: null

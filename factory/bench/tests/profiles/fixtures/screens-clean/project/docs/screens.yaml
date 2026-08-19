@@ -1,0 +1,30 @@
+# Synthetic fixture screens.yaml — not a real product, used only by
+# factory/bench/tests/profiles/ui-routes-screens.test.ts.
+
+screens:
+  - id: S-home
+    name: Home
+    area: marketing
+    route: /
+    states:
+      - default
+    mockup_states:
+      - default
+  - id: S-note-editor
+    name: Note editor
+    area: app
+    route: /notes/:id
+    screenshot_route: /notes/example
+    states:
+      - default
+    mockup_states:
+      - default
+  - id: S-welcome-email
+    name: Welcome email
+    area: email
+    states:
+      - default
+    mockup_states:
+      - default
+
+areas_without_screens: [admin]

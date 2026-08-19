@@ -1,0 +1,28 @@
+# Synthetic fixture module — not a real profile, used only by factory/bench/tests/profiles.
+# The `behaviors` block is deliberately absent — this fixture proves moduleManifest() fails
+# closed on a mandatory top-level field missing from an otherwise `status: complete` module.
+name: demo-be
+dimension: backend
+status: complete
+
+app_layout:
+  - app/api/
+
+scaffold:
+  - "demo scaffold step"
+
+commands:
+  lint: "echo lint-be"
+  test: "echo test-be"
+  build: null
+  e2e: null
+
+screenshot:
+  method: null
+  preview_adapter: null
+
+deploy:
+  note: "not applicable"
+
+gate_adaptations:
+  generic_gate_note: "not applicable"
