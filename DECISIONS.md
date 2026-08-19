@@ -394,3 +394,95 @@ and fixing the Node-family `behaviors` mapping as a closed decision rather than 
 choice, keeps this the same kind of single, non-drifting contract [D-002](#d-002--dp-5-single-source-of-truth-per-role)
 and [D-009](#d-009--definition-phase-artifact-conventions-status-header-stable-ids-schemas)
 already established for roles and for Definition-phase documents.
+
+---
+
+## D-012 — The profile resolver: fail-closed module resolution, wired into four extension points
+
+**Date:** 2026-08-19
+**Status:** accepted
+
+`.github/scripts/profile-resolve.mjs` is the resolver [D-010](#d-010--the-profile-module-contract-and-the-fixed-node-family-behaviors-mapping)
+deferred to EVP3: the first code in this repo that reads `project/state/profile.json` and a
+module's `module.yaml`, and the four gate scripts that previously carried a single, manually
+wired profile now read through it instead:
+
+- **Four pure, exported functions**, `cwd` always explicit, modeled on
+  `gate-contracts.mjs`'s shape (pure functions + a thin CLI, importable without side effects):
+  `readProfile(cwd)` (the parsed `profile.json`, or `null` — no product is a valid state, not
+  an error); `moduleManifest(cwd, dimension)` (the active module's parsed `module.yaml`);
+  `resolvedCommand(cwd, name)` (every dimension's `commands.<name>`, collected across all four
+  dimensions rather than one "owning" dimension — both `lint` and `build` are legitimately
+  declared by more than one module in the pilot composition, e.g. `frontend/sveltekit`'s
+  stylelint alongside `backend/baas-supabase`'s eslint); `gateAdaptation(cwd, key)` (the first
+  matching `gate_adaptations.<key>` scanning the same four dimensions in order:
+  `frontend`, `backend`, `data-auth`, `deploy`).
+- **`moduleManifest` fails closed on exactly three doubts, every message pointing at
+  `PROFILES.md`:** the named module's directory/`module.yaml` is missing (§1); its `status` is
+  `skeleton` in a dimension `profile.json` actually composes — a skeleton is manifest-complete
+  but is never authority to compose, the same semantics D-010 already fixed for a skeleton
+  module in general (§5); or a mandatory field (top-level, or a mandatory nested key under
+  `commands`/`screenshot`/`behaviors`) is absent (§2). `resolvedCommand`/`gateAdaptation` call
+  `moduleManifest` for every dimension `profile.json` names, unconditionally — a valid,
+  D3-concluded profile resolves all four dimensions to non-skeleton modules (PROFILES.md §1),
+  so a skeleton anywhere in a real profile is a broken profile, not a partial one, and command/
+  adaptation resolution throws immediately rather than silently working around it.
+- **`ui-routes.mjs`'s `ROUTES` now derives from `project/docs/screens.yaml`** (extends
+  [D-009](#d-009--definition-phase-artifact-conventions-status-header-stable-ids-schemas)):
+  every screen with a `route` field, in file order; no `screens.yaml` (the empty skeleton,
+  still true on `main`) falls back to today's `['/']` placeholder unchanged. **New convention,
+  extending D-009 §3's `screens.yaml` schema:** a parameterized route (containing `:`) requires
+  the screen's `screenshot_route` field — a concrete instance (e.g. `screenshot_route:
+  /notes/example` for `route: /notes/:id`) — and fails closed with a clear error when absent,
+  never guessing a screenshot for a dynamic route. The loading logic is the exported
+  `loadRoutes(cwd)`; the module stays importable without side effects (no `process.exit`, no
+  CLI) exactly as before — only a genuinely malformed `screens.yaml` throws, loud and
+  immediate, which is the intended fail-closed behavior, not a regression of "safely
+  importable."
+- **`lint-antipatterns.mjs`'s "profile extension point" block** (`ROOTS`, `EXTENSIONS`,
+  `IGNORED_DIRS`, `FRAMEWORK_SCROLL_DIRECTIVE_SOURCE`) now resolves via
+  `gateAdaptation(cwd, 'lint_antipatterns_selectors')` when a profile exists, falling back to
+  today's hardcoded SvelteKit values otherwise (no profile on `main` today, so behavior is
+  unchanged there). `frontend/sveltekit/module.yaml`'s `gate_adaptations.lint_antipatterns_selectors`
+  changes from a prose sentence pointing back at the script to a small structured value
+  (`roots`, `extensions`, `ignored_dirs`, `framework_scroll_directive_source`) carrying the
+  *same* values the script already hardcodes — `gate_adaptations`'s schema
+  (`<gate-script-or-mechanism>: <what this module supplies>`) already leaves the value's shape
+  open, so this is not a schema change.
+- **`preview-url.mjs` picks its adapter by the active `deploy` module's own name** (a deploy
+  module names itself as the adapter identifier, per `deploy/netlify/module.yaml`'s own
+  comment), not through `gateAdaptation` — only `netlify` is implemented; any other resolved
+  deploy module exits 1 naming the gap, never silently falling back to Netlify. No profile ->
+  today's Netlify-only behavior, unchanged.
+- **`ci.yml`'s `product-ci` placeholder is replaced by `product-lint`/`product-test`/
+  `product-build`**, each `needs: detect-app-code` and gated on `has-code == 'true'` exactly
+  like the placeholder was, each running `npm ci` at the root and, when `app/web/package.json`
+  exists, `npm ci` in `app/web`, with commands read from `profile-resolve.mjs --command
+  <name>`. `product-lint` additionally always runs `lint-antipatterns.mjs`. None of the three
+  enter `main`'s required checks in this session (`app/` is empty there and they don't run) —
+  that stays an owner action once a real product exists.
+- **What stays explicitly unwired:** generating a product's actual deploy config
+  (`netlify.toml`, a Vercel setting, a Dockerfile line) from a module's `deploy` block — still
+  hand-written by a Generation session's scaffold step; and `screenshots.yml`'s/
+  `design-critic.yml`'s static trigger-paths, which cannot be parameterized in static YAML and
+  stay pinned to the SvelteKit pilot — a documented (not code-enforced) obligation now exists
+  in `PROFILES.md` §6: a frontend module maturing past `skeleton` updates both workflows'
+  trigger paths in the same PR.
+- **Known limitation, left as-is on purpose:** `data-auth/baas` is permanently `status:
+  skeleton` by design (D-010, PROFILES.md §5.1 — a derived record with nothing to scaffold),
+  yet it is also the value PROFILES.md §3's own worked example names for the pilot
+  composition's `data-auth` dimension. Under this resolver's fail-closed rule, resolving that
+  exact reference composition would throw. Maturing `data-auth/baas` to `status: complete` is
+  out of EVP3's scope (maturing skeleton modules is EVP4 work); this session's tests use fully
+  synthetic module fixtures so they don't depend on the real registry's current statuses. The
+  gap is real and stays open for whoever builds `/define-architecture` (a later EVP3 session).
+
+**Why:** without a resolver, every extension point stayed a single, hand-edited fork —
+correct only for the one pilot profile it was wired to, and silently wrong (or simply
+unreachable) for any other composition. Fail-closing on a skeleton or a missing field, rather
+than falling back to a default, is the same posture `gate-contracts.mjs` (D-007) and this
+file's own D-008/D-010 already take: a gate that stays quiet when it doesn't know delivers a
+green that means nothing. Collecting commands across every dimension instead of picking one
+"owning" module avoids inventing an ownership rule the module registry itself doesn't state,
+and degrades to exactly today's single-command behavior wherever only one dimension declares
+a given command.
