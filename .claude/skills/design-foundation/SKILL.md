@@ -97,7 +97,7 @@ fill it in **field by field**:
   by the reason;
 - **§4** with semantic tokens and **contrast verified here** (WCAG AA is the floor, not
   something the critic discovers) — this table is what step 8 transcribes into `tokens.css`;
-- **§14** with each decision's provenance (`derived-from-asset` / `created-at-Foundation` /
+- **§14** with each decision's provenance (`derived-from-asset` / `created-in-Foundation` /
   `inherited-from-existing-DS` + source) and the **list of assets read** in step 2;
 - **§15**, first entry: the directions discarded in step 5, each with a reason tied to the
   product, the audience, or a concrete constraint.

@@ -39,7 +39,7 @@ four items in the convention (`factory/templates/BRAND-ASSETS-template.md`): `lo
 
 **Record what you read**, item by item, and carry that list into `DESIGN.md` §14. It's what
 distinguishes "no asset existed" from "I didn't check" — a decision marked
-`created-at-Foundation` where an asset was actually available is a **violation of R-ASSETS**,
+`created-in-Foundation` where an asset was actually available is a **violation of R-ASSETS**,
 a review finding, not a preference.
 
 ### 2. Read the input contract
@@ -105,7 +105,7 @@ and `> _Example:_`) and keeping the "three rules of this document" section.
   candidate for approval. A field that doesn't apply gets `Not applicable —` **followed by
   the reason**: a deleted field is a forgotten field, a field with a reason is a decision.
 - **§14 Provenance** complete: every decision with its origin (`derived-from-asset` /
-  `created-at-Foundation` / `inherited-from-existing-DS`) and the cited source, plus the
+  `created-in-Foundation` / `inherited-from-existing-DS`) and the cited source, plus the
   **list of assets read** in step 1.
 - **§15 Design memory**, first entry: the directions from step 4 you **discarded**, each with
   a reason tied to the product, the audience, or a concrete constraint. "Didn't like it"
