@@ -1,0 +1,28 @@
+name: demo-be
+dimension: backend
+status: complete
+
+app_layout:
+  - app/api/
+
+scaffold: []
+
+commands:
+  lint: null
+  test: "echo demo-behaviors-test"
+  build: null
+  e2e: null
+
+screenshot:
+  method: null
+  preview_adapter: null
+
+deploy: {}
+
+gate_adaptations: {}
+
+behaviors:
+  applicable: false
+  runner: null
+  mapping: null
+  mock: null

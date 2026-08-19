@@ -1,0 +1,28 @@
+name: demo-be
+dimension: backend
+status: complete
+
+app_layout:
+  - app/api/
+
+scaffold: []
+
+commands:
+  lint: null
+  test: "echo demo-behaviors-test"
+  build: null
+  e2e: null
+
+screenshot:
+  method: null
+  preview_adapter: null
+
+deploy: {}
+
+gate_adaptations: {}
+
+behaviors:
+  applicable: true
+  runner: vitest
+  mapping: "app/api/tests/behaviors/<feature>.mirror.ts mirrors project/docs/behaviors/<feature>.feature, one file per feature area; every scenario appears as a grep-verifiable @scenario:<slug> comment (fixture uses .mirror.ts, not .test.ts, so it is not swept into the real vitest run by factory/bench's own *.test.ts include glob)"
+  mock: "HTTP interception in-process; synthetic payloads only, no live network call"
