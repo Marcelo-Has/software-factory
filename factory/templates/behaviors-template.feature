@@ -2,9 +2,11 @@
 #
 # How to instantiate
 # Copy to project/docs/behaviors/<feature-area>.feature — one file per product feature area,
-# not one giant file. Built in D3 (/define-architecture), once contracts/openapi.yaml exists
-# to tag scenarios against; D2 (/define-spec) is where SPEC.md declares which flows need
-# scenarios in the first place. Convention (DECISIONS.md D-009 §2, D-007):
+# not one giant file. Built in D2 (/define-spec), together with SPEC.md and screens.yaml: the
+# operationId/I-<slug> values you tag with here don't exist as real contracts yet — naming them
+# sensibly and stably is D2's job, and D3 (/define-architecture) makes those exact same names
+# real in contracts/openapi.yaml and contracts/integrations.yaml, never inventing different
+# ones. Convention (DECISIONS.md D-009 §2, D-007):
 #
 #   @scenario:<slug>          a short, stable, kebab-case id for this scenario. Never reuse a
 #                              retired slug for a different scenario later.
