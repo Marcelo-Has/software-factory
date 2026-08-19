@@ -120,11 +120,13 @@ jobs:
         run: npm ci
         working-directory: app/web
       - run: |
+          set -euo pipefail
+          node .github/scripts/profile-resolve.mjs --command lint > "$RUNNER_TEMP/lint-cmds.txt"
           while IFS= read -r cmd; do
             [ -z "$cmd" ] && continue
             echo "+ $cmd"
             eval "$cmd"
-          done < <(node .github/scripts/profile-resolve.mjs --command lint)
+          done < "$RUNNER_TEMP/lint-cmds.txt"
           node .github/scripts/lint-antipatterns.mjs
 
   product-test:
@@ -143,11 +145,17 @@ jobs:
         run: npm ci
         working-directory: app/web
       - run: |
+          set -euo pipefail
+          node .github/scripts/profile-resolve.mjs --command test > "$RUNNER_TEMP/test-cmds.txt"
+          if [ ! -s "$RUNNER_TEMP/test-cmds.txt" ]; then
+            echo "::error::app/ has product code but no active profile module declares a \`test\` command."
+            exit 1
+          fi
           while IFS= read -r cmd; do
             [ -z "$cmd" ] && continue
             echo "+ $cmd"
             eval "$cmd"
-          done < <(node .github/scripts/profile-resolve.mjs --command test)
+          done < "$RUNNER_TEMP/test-cmds.txt"
 
   product-build:
     name: product-build
@@ -165,8 +173,14 @@ jobs:
         run: npm ci
         working-directory: app/web
       - run: |
+          set -euo pipefail
+          node .github/scripts/profile-resolve.mjs --command build > "$RUNNER_TEMP/build-cmds.txt"
+          if [ ! -s "$RUNNER_TEMP/build-cmds.txt" ]; then
+            echo "::error::app/ has product code but no active profile module declares a \`build\` command."
+            exit 1
+          fi
           while IFS= read -r cmd; do
             [ -z "$cmd" ] && continue
             echo "+ $cmd"
             eval "$cmd"
-          done < <(node .github/scripts/profile-resolve.mjs --command build)
+          done < "$RUNNER_TEMP/build-cmds.txt"
