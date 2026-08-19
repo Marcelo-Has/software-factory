@@ -116,7 +116,10 @@ export function runDefinitionDone(cwd = process.cwd()) {
 		}
 		const verdict = validateStatusHeader(readFileSync(path, 'utf8'));
 		if (!verdict.ok) {
-			push(stage, `\`project/${rel}\` ${verdict.reason}`, STAGE_SKILL[stage]);
+			const reason =
+				verdict.reason ??
+				`is at \`Status: ${verdict.status}\`. Only \`approved\` completes the stage: the skill PROPOSES, the owner approves.`;
+			push(stage, `\`project/${rel}\` ${reason}`, STAGE_SKILL[stage]);
 		}
 	}
 

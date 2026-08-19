@@ -2,9 +2,9 @@
 
 ## How to instantiate
 
-Copy this file to `project/design/DESIGN-DIGEST.md` and fill it in **after** `DESIGN.md` is
-approved and `project/design/tokens.css` exists — this is the third D4 deliverable
-(`/design-foundation`), alongside the two of them. Convention (see `DECISIONS.md` D-009):
+Copy this file to `project/design/DESIGN-DIGEST.md` and fill it in as the third member of the
+**candidate** trio — alongside `DESIGN.md` and `project/design/tokens.css`, `Status: candidate`,
+before owner approval (D4, `/design-foundation`, step 9). Convention (see `DECISIONS.md` D-009):
 
 - `<!-- HOW TO FILL: ... -->` — the instruction. **Removed** from the filled copy.
 - `[TO FILL IN]` — a required field still empty. A `DESIGN-DIGEST.md` with any `[TO FILL IN]`
@@ -58,6 +58,7 @@ brevity.
 | --- | --- |
 | `surface` | `[TO FILL IN]` |
 | `foreground` | `[TO FILL IN]` |
+| `muted` | `[TO FILL IN]` |
 | `accent` | `[TO FILL IN]` |
 | `destructive` / `success` / `warning` | `[TO FILL IN]` |
 | `border` / `focus` | `[TO FILL IN]` |

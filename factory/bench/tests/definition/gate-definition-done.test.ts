@@ -53,7 +53,11 @@ describe('runDefinitionDone against synthetic fixture trees', () => {
 		expect(r.ok).toBe(false);
 		expect(r.pendingItems).toHaveLength(1);
 		expect(r.pendingItems[0]).toMatchObject({ area: 'D1', skill: '/define-product' });
-		expect(r.pendingItems[0].message).toContain('Status: candidate');
+		// Generic wording (F-1): gate-definition-done composes its own message from the parsed
+		// status rather than reusing gate-design-md.mjs's DESIGN.md-specific "deriving UI" text.
+		expect(r.pendingItems[0].message).toContain(
+			'is at `Status: candidate`. Only `approved` completes the stage: the skill PROPOSES, the owner approves.'
+		);
 	});
 
 	it('rejects a waiver recorded without the owner\'s approval — the waiver does not count', () => {

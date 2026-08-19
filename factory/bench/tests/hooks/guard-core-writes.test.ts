@@ -214,6 +214,63 @@ describe('guard-core-writes hook (.claude/settings.json)', () => {
 			const input = payload(cwd, 'Bash', { command: 'echo x > factory/docs/FACTORY.md' });
 			expect(blocked(bashHooks, input)).toBe(false);
 		});
+
+		// F-2 (S8 dry-run friction log): three real false positives from the old
+		// co-occurrence-only heuristic, now token-aware and passing.
+		describe('F-2 false positives — must pass', () => {
+			it('allows cp reading from core and writing under project/ (source mentions core, destination does not)', () => {
+				const cwd = fixture('marker');
+				const input = payload(cwd, 'Bash', {
+					command: 'cp factory/templates/X project/state/Y'
+				});
+				expect(blocked(bashHooks, input)).toBe(false);
+			});
+
+			it('allows running a core gate script with 2>&1 (fd duplication, not a path write)', () => {
+				const cwd = fixture('marker');
+				const input = payload(cwd, 'Bash', {
+					command: 'node .github/scripts/gate-definition-done.mjs 2>&1'
+				});
+				expect(blocked(bashHooks, input)).toBe(false);
+			});
+
+			it('allows an rm on a non-core path chained with a core script read', () => {
+				const cwd = fixture('marker');
+				const input = payload(cwd, 'Bash', {
+					command: 'rm project/design/.gitkeep && node .github/scripts/gate-definition-done.mjs'
+				});
+				expect(blocked(bashHooks, input)).toBe(false);
+			});
+		});
+
+		// Still-blocked true positives, token-aware version.
+		describe('true positives — must still block', () => {
+			it('blocks a plain redirect into a core path', () => {
+				const cwd = fixture('marker');
+				const input = payload(cwd, 'Bash', { command: 'echo x > factory/f' });
+				expect(blocked(bashHooks, input)).toBe(true);
+			});
+
+			it('blocks cp whose destination is a core path', () => {
+				const cwd = fixture('marker');
+				const input = payload(cwd, 'Bash', { command: 'cp a.txt factory/b.txt' });
+				expect(blocked(bashHooks, input)).toBe(true);
+			});
+
+			it('blocks sed -i on a core path', () => {
+				const cwd = fixture('marker');
+				const input = payload(cwd, 'Bash', {
+					command: "sed -i 's/x/y/' .claude/settings.json"
+				});
+				expect(blocked(bashHooks, input)).toBe(true);
+			});
+
+			it('blocks rm on a core path', () => {
+				const cwd = fixture('marker');
+				const input = payload(cwd, 'Bash', { command: 'rm .github/workflows/ci.yml' });
+				expect(blocked(bashHooks, input)).toBe(true);
+			});
+		});
 	});
 
 	// ALLOWLIST ships empty (a `const` inside the invoked script — it can't be mutated from

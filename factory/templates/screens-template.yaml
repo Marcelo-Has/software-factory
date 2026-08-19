@@ -24,7 +24,10 @@ screens:
                                   # "default"; add the others this screen actually needs
                                   # (loading, empty, error, overflow, offline/degraded — per
                                   # factory/docs/CRAFT-PRINCIPLES.md's mandatory-states floor,
-                                  # not every state applies to every screen).
+                                  # not every state applies to every screen). When a screen has
+                                  # structurally different failure causes (e.g. a load failure
+                                  # vs. a save failure), declare them as distinct states —
+                                  # e.g. load-error, save-error — instead of one generic error.
       - default
     mockup_states:               # the subset of `states` above that requires a mockup file
                                   # (D5, DECISIONS.md D-009 §4). `default` is always included —
