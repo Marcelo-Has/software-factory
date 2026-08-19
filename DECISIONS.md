@@ -486,3 +486,110 @@ green that means nothing. Collecting commands across every dimension instead of 
 "owning" module avoids inventing an ownership rule the module registry itself doesn't state,
 and degrades to exactly today's single-command behavior wherever only one dimension declares
 a given command.
+
+---
+
+## D-013 — The behaviors-mirror gate: coverage checked, then the mirrored scenarios executed
+
+**Date:** 2026-08-19
+**Status:** accepted
+
+`gate-contracts.mjs` ([D-007](#d-007--the-dp-3-axis-logicalintegration-contracts-symmetric-to-the-visual-axis))
+checks that a `.feature` scenario is well-formed and tagged; it never checks that scenario has
+a mirrored test, or runs one. `.github/scripts/gate-behavior-mirror.mjs` closes that gap —
+the execution half of DP-3 (D-3.3) that
+[D-010](#d-010--the-profile-module-contract-and-the-fixed-node-family-behaviors-mapping)'s
+`behaviors.mapping` declared the shape of but deferred building:
+
+- **Pure functions + a thin CLI**, modeled on `gate-contracts.mjs`'s own shape (importable
+  without side effects, no shebang, same CLI-entry guard). `checkBehaviorMirror(cwd)` returns
+  `{ ok, findings, reason }` — `reason` set only on a right-sizing early exit.
+- **Mapping resolution from prose, mechanically.** `behaviors.mapping` is a sentence, not
+  structured data (`"app/api/tests/behaviors/<feature>.test.ts mirrors
+  project/docs/behaviors/<feature>.feature, ..."`). The gate extracts the mirror-path and
+  feature-path templates from the mapping's first two whitespace-delimited tokens — every
+  Node-family `module.yaml` already phrases `behaviors.mapping` this way (D-010's fixed
+  convention), so this is a reliable extraction, not a guess.
+- **Four failure classes**, all line/regex-oriented (no Gherkin-parser dependency, same
+  philosophy `gate-contracts.mjs`'s own scenario parsing already takes): `mirror-missing` (a
+  `.feature` has no mirror file at its resolved path); `scenario-uncovered` (a `.feature`'s
+  `@scenario:<slug>` has no matching comment in the mirror); `mirror-comment-orphan` (the
+  mirror has an `@scenario:<slug>` comment absent from the `.feature` — deriving in either
+  direction is caught, not just one); `mirror-placeholder` (the mirror exists, slugs match,
+  but has zero `test(`/`it(` calls).
+- **Right-sizing (D-007), three branches, each exiting 0 with a stated reason:** no active
+  profile yet; the active backend module declares `behaviors.applicable: false`; or the
+  product has zero `.feature` files yet. None of these is a gate failure — they're valid
+  states this gate costs nothing against, same posture `resolvedCommand`'s "declared null =
+  not applicable" already takes.
+- **PR-mode applicability** reuses `gate-contracts.mjs`'s own `touchesContracts` (imported, not
+  duplicated — its `CONTRACT_PATTERNS` already covers `project/docs/behaviors/`) plus the
+  resolved mirror-test directory; no changed-files list means unconditional (fail-closed), the
+  same contract `gate-contracts.mjs` already has.
+- **`ci.yml`'s new `product-behaviors` job** (`needs: detect-app-code`, gated on `has-code`,
+  same shape as `product-lint`/`test`/`build`) runs the gate, then — only if it passes — the
+  active backend module's resolved `test` command, so the mirrored scenarios actually execute
+  and pass or fail, not just get checked for existence. The command comes from a new
+  `--print-test-command` CLI flag on `gate-behavior-mirror.mjs` itself (prints
+  `commands.test` when `behaviors.applicable`, nothing otherwise) rather than a new filter on
+  `profile-resolve.mjs`'s `--command` flag, which would print both the frontend's and the
+  backend's `test` command mixed together whenever both declare one (as the pilot composition
+  already does).
+- **Hermetic, mock-first, unchanged from D-007/D-010 (closed, not reopened here):** no secret,
+  no network, in-process HTTP interception; a real sandbox smoke test stays opt-in and unbuilt.
+- **Who writes the mirror:** the Generation session for the logical milestone, in the same PR
+  as the `.feature` file (R-1PR) — the `.feature` is intent and oracle, the mirror is the
+  execution. Findings therefore carry no `skill` field (unlike `gate-contracts.mjs`'s
+  findings) — there's no Definition-phase slash-skill that resolves a coverage gap here, only
+  the next Generation session's own work.
+- **Planted violations:** synthetic fixtures under `factory/bench/tests/behaviors-gate/`, one
+  per failure class plus the right-sizing branches, self-contained (their own
+  `profile.json`/`module.yaml`, never the real registry — same reason D-012's own fixtures
+  don't reuse `data-auth/baas`).
+
+**Why:** a coverage-only gate (does a mirror file exist, do the comments line up) would still
+let a broken or vacuous test pass silently — `mirror-placeholder`'s whole point is that
+existence isn't execution. Running the resolved test command right after the coverage gate,
+in the same job, means a milestone's PR can't merge on a mirror that merely looks right; it
+has to actually run. Keeping the mapping-parsing and command-resolution logic inside this one
+new file, rather than extending `profile-resolve.mjs`, keeps this session's diff to exactly
+the files this decision is scoped to and avoids a `--dimension` filter that nothing else in
+the repo needs yet.
+
+---
+
+## D-014 — The milestone verification bundle, and promoting `contract-gates` to required
+
+**Date:** 2026-08-19
+**Status:** accepted
+
+A milestone's PR (Generation regime) is verified once, by a fixed bundle, before a human
+merges it — never on CI alone and never on a visual pass alone (D-3.4). The bundle, and what
+changes in required-check enforcement:
+
+- **The bundle:** deterministic CI (`english-only`, `boundary-check`, `factory-tests`,
+  `contract-gates`, `product-lint`, `product-test`, `product-build`,
+  `product-behaviors` — [D-013](#d-013--the-behaviors-mirror-gate-coverage-checked-then-the-mirrored-scenarios-executed))
+  + design-critic's dual-pass verdict against `screenshots.yml`'s deploy-preview evidence
+  (GR-5) + security (gitleaks, `npm audit`, the idempotency/NFR review rubric added in EVP2)
+  + verdict's acceptance-criteria judgment against the milestone issue. All five, not any
+  one, gate the human merge. Recorded in `factory/docs/FACTORY.md`'s regimes section and in
+  the new `factory/checklists/milestone-verification.md` (the human mirror — same convention
+  as `factory/checklists/definition-done.md`).
+- **`contract-gates` is promoted to a required check on `main` now.** The job already runs
+  unconditionally and exits 0 on the still-empty `project`/`app` skeleton (D-007's own
+  right-sizing) — promoting it is risk-free, since it can't newly fail anything that isn't
+  already broken. Flipping the branch-protection setting is an owner action (plan §1), not
+  part of this session's diff.
+- **The `product-*` jobs stay unpromoted on `main`.** `app/` is empty there, so those jobs
+  don't even run (`detect-app-code`'s `has-code` is `false`) — requiring a job that never
+  runs would block every PR forever. A real product repo (EVP4) is born with the product jobs
+  required from day one, alongside `english-only`/`boundary-check`/`factory-tests`/
+  `contract-gates` — the duplication is intentional, not an oversight: an empty-skeleton core
+  repo and a real product repo have different required sets by construction, not by omission.
+
+**Why:** naming the bundle once, in one place, is what stops "verified" from silently
+narrowing to "CI is green" or "the critic approved" over time — either alone has already been
+enough to ship a broken or unfinished-looking milestone in past sessions' experience. Promoting
+`contract-gates` now, while it's free to promote, is cheaper than remembering to do it later
+once `app/` is populated and the promotion carries real risk of blocking an in-flight PR.

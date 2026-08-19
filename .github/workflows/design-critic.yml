@@ -257,8 +257,9 @@ jobs:
             `gh pr comment` (the verdict goes to the FILE above; the non-AI step publishes it).
             `Read` opens a PNG — that's how you look at the evidence.
 
-            There are 15 images and they ARE the work: budget turns to read them, not to explore
-            the repository. If the budget is running low, STOP investigating and write the
+            Every route x every viewport under artifacts/screenshots is the work: budget turns
+            to read ALL of them, not to explore the repository — an earlier step guaranteed
+            completeness. If the budget is running low, STOP investigating and write the
             verdict file with what you have — a partial critique published beats a red job with
             nothing. Never finish without writing the file.
           # Same allow-list as the Reviewer, for the same reasons: `Bash(gh pr comment:*)` is
@@ -266,9 +267,10 @@ jobs:
           # are excluded (none respects the `deny` list in `.claude/settings.json`, and
           # `find -exec` is arbitrary execution).
           #
-          # `--max-turns 60`: 15 images are the role's fixed cost, and the rest of the budget is
-          # analysis. Between Verdict's 40 and the Reviewer's 80 because there's no large diff to
-          # walk here — there's evidence to look at.
+          # `--max-turns 60`: reading every route x viewport screenshot is the role's fixed
+          # cost (the count varies by product/milestone, not a fixed 15 — DECISIONS.md D-012),
+          # and the rest of the budget is analysis. Between Verdict's 40 and the Reviewer's 80
+          # because there's no large diff to walk here — there's evidence to look at.
           claude_args: '--max-turns 60 --model claude-sonnet-5 --allowed-tools "Read,Glob,Grep,Write,TodoWrite,Bash(ls:*),Bash(git log:*),Bash(git show:*),Bash(gh pr view:*),Bash(gh pr diff:*)"'
 
       - name: Classify Pass A's failure as infra or real (F2)
@@ -406,8 +408,9 @@ jobs:
             `gh pr comment` (the verdict goes to the FILE above; the non-AI step publishes it).
             `Read` opens a PNG — that's how you look at the evidence.
 
-            There are 15 images and they ARE the work: budget turns to read them, not to explore
-            the repository. If the budget is running low, STOP investigating and write the
+            Every route x every viewport under artifacts/screenshots is the work: budget turns
+            to read ALL of them, not to explore the repository — an earlier step guaranteed
+            completeness. If the budget is running low, STOP investigating and write the
             verdict file with what you have — a partial critique published beats a red job with
             nothing. Never finish without writing the file.
           claude_args: '--max-turns 60 --model claude-sonnet-5 --allowed-tools "Read,Glob,Grep,Write,TodoWrite,Bash(ls:*),Bash(git log:*),Bash(git show:*),Bash(gh pr view:*),Bash(gh pr diff:*)"'
