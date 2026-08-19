@@ -44,10 +44,11 @@ a review finding, not a preference.
 
 ### 2. Read the input contract
 
-- **`project/docs/PRODUCT.md` §8.1–8.3**: who buys, who receives, and the emotional context;
-  market and positioning; brand personality. This is where the anchors for `DESIGN.md` §1
-  come from. Fields marked **[TO CONFIRM AT FOUNDATION]** are gaps **you propose** and the
-  owner approves — not fields to skip.
+- **`project/docs/PRODUCT.md` §2 (Audience) and §6 (Personality and brand positioning)**: who
+  buys, who receives, and the emotional context; market and positioning; brand personality.
+  This is where the anchors for `DESIGN.md` §1 come from. Fields marked
+  **[TO CONFIRM AT FOUNDATION]** are gaps **you propose** and the owner approves — not fields
+  to skip.
 - **The declared interface category's playbook** (`factory/docs/playbooks/`): its "Where the
   Foundation focuses" section says what `DESIGN.md` needs to deliver on top of the baseline
   for that category. A playbook in *skeleton* state isn't authority; it counts as a note. A
