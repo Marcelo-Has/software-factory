@@ -67,22 +67,18 @@ function findChromium() {
 	return r.status === 0 ? r.stdout.trim() : '';
 }
 
-/** Quote only where needed. `--chrome-flags` and a Windows temp path both contain spaces. */
-const quote = (a) => (/\s/.test(a) ? `"${a}"` : a);
-
 function measure(url, destination, chrome) {
 	const file = join(destination, `${routeSlug(new URL(url).pathname)}.json`);
-	// `shell: true`, out of necessity, not convenience: since Node 20.12 `spawn` refuses to
-	// run `.cmd`/`.bat` without a shell (the CVE-2024-27980 fix), and on Windows `npx` IS a
-	// `.cmd` — without this the process dies with `status: null` and empty stderr, which is
-	// exactly the failure mode seen while writing this script. No argument here comes from
-	// outside: `url` is `PREVIEW_URL` plus a route from the fixed list, everything else is a
-	// constant in this file.
-	const command = ['npx', '-y', `lighthouse@${VERSION}`, url, ...ARGS, `--output-path=${file}`]
-		.map(quote)
-		.join(' ');
-	const r = spawnSync(command, {
-		shell: true,
+	// `shell` only on win32, out of necessity, not convenience: since Node 20.12 `spawn`
+	// refuses to run `.cmd`/`.bat` without a shell (the CVE-2024-27980 fix), and on Windows
+	// `npx` IS a `.cmd`. On Linux (where this actually runs in CI) `argv` is exec'd directly,
+	// with no shell to interpolate into at all. `url`'s route now comes from
+	// `project/docs/screens.yaml` (DECISIONS.md D-012) and is validated by `ui-routes.mjs`'s
+	// `SAFE_ROUTE` check before it ever reaches here; everything else is a constant in this
+	// file.
+	const argv = ['-y', `lighthouse@${VERSION}`, url, ...ARGS, `--output-path=${file}`];
+	const r = spawnSync('npx', argv, {
+		shell: process.platform === 'win32',
 		encoding: 'utf8',
 		env: { ...process.env, CHROME_PATH: chrome },
 		timeout: 180_000

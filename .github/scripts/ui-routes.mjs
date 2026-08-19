@@ -83,6 +83,13 @@ function parseScreens(text) {
 export const DIRECTORY = 'artifacts/screenshots';
 
 /**
+ * A route must be a plain absolute path. Enforced because a route is interpolated into a URL
+ * (`lighthouse-a11y.mjs`) and into gate command lines — anything outside letters/digits/
+ * `-._~/` has no legitimate use here and is a shell/URL injection vector otherwise.
+ */
+const SAFE_ROUTE = /^\/[A-Za-z0-9\-._~/]*$/;
+
+/**
  * The three widths from the Visual Verification Loop, with a fixed height. Height doesn't
  * enter the filename (the convention is `<route>-<viewport>`) but has to be deterministic:
  * the screenshot is `fullPage`, and the viewport height decides where the FIRST FOLD falls
@@ -108,6 +115,7 @@ export function loadRoutes(cwd = process.cwd()) {
 	const routes = [];
 	for (const screen of screens) {
 		if (!screen.route) continue;
+		let chosen;
 		if (screen.route.includes(':')) {
 			if (!screen.screenshot_route) {
 				throw new Error(
@@ -116,10 +124,18 @@ export function loadRoutes(cwd = process.cwd()) {
 						'e.g. `screenshot_route: /notes/example` (DECISIONS.md D-012).'
 				);
 			}
-			routes.push(screen.screenshot_route);
+			chosen = screen.screenshot_route;
 		} else {
-			routes.push(screen.route);
+			chosen = screen.route;
 		}
+		if (!SAFE_ROUTE.test(chosen)) {
+			throw new Error(
+				`project/docs/screens.yaml: screen "${screen.id}" has route "${chosen}" — a route must ` +
+					'be a plain absolute path (letters, digits, `-._~/`). It is interpolated into a URL ' +
+					'and into gate command lines (DECISIONS.md D-012).'
+			);
+		}
+		routes.push(chosen);
 	}
 	return routes;
 }
