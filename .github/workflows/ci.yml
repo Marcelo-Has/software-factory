@@ -96,13 +96,77 @@ jobs:
             echo "app/ is still the empty skeleton — no product job to run yet."
           fi
 
-  # Placeholder product job, wired to the condition above. A profile lands with its own
-  # lint/test/build job(s) gated the same way — `if: needs.detect-app-code.outputs.has-code
-  # == 'true'` — rather than inventing the condition again at that point.
-  product-ci:
-    name: product-ci
+  # The profile resolver (DECISIONS.md D-012) reads project/state/profile.json and prints each
+  # active module's resolved command, one per line — `resolvedCommand` collects across every
+  # dimension that declares a non-null command for the given name, not just one "owning"
+  # dimension (e.g. the pilot's frontend stylelint AND backend eslint both count as `lint`).
+  # Gated the same way the product-ci placeholder was — `needs: detect-app-code` +
+  # `if: has-code == 'true'` — so these stay no-ops on the still-empty app/ skeleton. app/web's
+  # own dependencies are installed separately (root npm ci resolves nothing under app/web):
+  # same reason implement.yml does it — dependencies ready before the gate runs.
+  product-lint:
+    name: product-lint
     needs: detect-app-code
     if: needs.detect-app-code.outputs.has-code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - run: echo "app/ has code — a profile's real lint/test/build steps replace this placeholder."
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - if: hashFiles('app/web/package.json') != ''
+        run: npm ci
+        working-directory: app/web
+      - run: |
+          while IFS= read -r cmd; do
+            [ -z "$cmd" ] && continue
+            echo "+ $cmd"
+            eval "$cmd"
+          done < <(node .github/scripts/profile-resolve.mjs --command lint)
+          node .github/scripts/lint-antipatterns.mjs
+
+  product-test:
+    name: product-test
+    needs: detect-app-code
+    if: needs.detect-app-code.outputs.has-code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - if: hashFiles('app/web/package.json') != ''
+        run: npm ci
+        working-directory: app/web
+      - run: |
+          while IFS= read -r cmd; do
+            [ -z "$cmd" ] && continue
+            echo "+ $cmd"
+            eval "$cmd"
+          done < <(node .github/scripts/profile-resolve.mjs --command test)
+
+  product-build:
+    name: product-build
+    needs: detect-app-code
+    if: needs.detect-app-code.outputs.has-code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - if: hashFiles('app/web/package.json') != ''
+        run: npm ci
+        working-directory: app/web
+      - run: |
+          while IFS= read -r cmd; do
+            [ -z "$cmd" ] && continue
+            echo "+ $cmd"
+            eval "$cmd"
+          done < <(node .github/scripts/profile-resolve.mjs --command build)
